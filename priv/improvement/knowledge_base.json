@@ -1,0 +1,140 @@
+[
+  {
+    "data": {
+      "check_status": "gap",
+      "criterion_id": "ac-1",
+      "evidence": [
+        "Missing lib/mix/tasks/binance.fetch_candles.ex"
+      ]
+    },
+    "details": "A CLI command fetches candles for at least one symbol and interval. Guidance: Add a Mix task to fetch Binance Spot klines with symbol/interval/date-range pagination.",
+    "id": "finding-1",
+    "tags": [
+      "requirements",
+      "data_extraction"
+    ],
+    "task_id": 1,
+    "timestamp": "2026-02-07T11:13:21Z",
+    "title": "ac-1: Requirement gap detected"
+  },
+  {
+    "data": {
+      "check_status": "gap",
+      "criterion_id": "ac-2",
+      "evidence": [
+        "Expected lib/cripto_trader/simulation/runner.ex",
+        "Expected test/simulation/performance_test.exs"
+      ]
+    },
+    "details": "A simulation run can process 3 months of 15m candles in under 5 minutes on a dev machine. Guidance: Implement simulation replay + deterministic performance test for 3 months of 15m candles.",
+    "id": "finding-2",
+    "tags": [
+      "requirements",
+      "simulation",
+      "performance"
+    ],
+    "task_id": 2,
+    "timestamp": "2026-02-07T11:13:21Z",
+    "title": "ac-2: Requirement gap detected"
+  },
+  {
+    "data": {
+      "check_status": "gap",
+      "criterion_id": "ac-3",
+      "evidence": [
+        "Missing multi-symbol simulation support in lib/cripto_trader/simulation/runner.ex"
+      ]
+    },
+    "details": "A single strategy can run against multiple symbols in simulation. Guidance: Support one strategy across multiple symbols in simulation inputs and execution path.",
+    "id": "finding-3",
+    "tags": [
+      "requirements",
+      "simulation",
+      "multi_symbol"
+    ],
+    "task_id": 3,
+    "timestamp": "2026-02-07T11:13:21Z",
+    "title": "ac-3: Requirement gap detected"
+  },
+  {
+    "data": {
+      "check_status": "met",
+      "criterion_id": "ac-4",
+      "evidence": [
+        "Risk gate and both modes found in lib/cripto_trader/order_manager.ex"
+      ]
+    },
+    "details": "All risk checks are enforced in both paper and live modes.",
+    "id": "finding-4",
+    "tags": [
+      "requirements",
+      "risk",
+      "paper",
+      "live"
+    ],
+    "task_id": 4,
+    "timestamp": "2026-02-07T11:13:21Z",
+    "title": "ac-4: Requirement appears satisfied"
+  },
+  {
+    "data": {
+      "check_status": "met",
+      "criterion_id": "ac-1",
+      "evidence": [
+        "Found Mix.Tasks.Binance.FetchCandles.run/1",
+        "`Mix.Tasks.Binance.FetchCandles` executes paginated symbol/interval/date-range fetch path"
+      ]
+    },
+    "details": "A CLI command fetches candles for at least one symbol and interval.",
+    "id": "finding-5",
+    "tags": [
+      "requirements",
+      "data_extraction"
+    ],
+    "task_id": 1,
+    "timestamp": "2026-02-07T15:23:52Z",
+    "title": "ac-1: Requirement appears satisfied"
+  },
+  {
+    "data": {
+      "check_status": "met",
+      "criterion_id": "ac-2",
+      "evidence": [
+        "Found Mix.Tasks.Binance.SimulationBenchmark.run/1",
+        "`Mix.Tasks.Binance.SimulationBenchmark` executes deterministic 3-month 15m benchmark path",
+        "Processed 25920 events in 0.136333s",
+        "Threshold: 300.000000s for 90 days of 15m candles"
+      ]
+    },
+    "details": "A simulation run can process 3 months of 15m candles in under 5 minutes on a dev machine.",
+    "id": "finding-6",
+    "tags": [
+      "requirements",
+      "simulation",
+      "performance"
+    ],
+    "task_id": 2,
+    "timestamp": "2026-02-07T15:23:52Z",
+    "title": "ac-2: Requirement appears satisfied"
+  },
+  {
+    "data": {
+      "evidence": [
+        "One strategy function processed events for 2 symbols in one simulation run",
+        "Trade log contains fills for all configured symbols"
+      ],
+      "criterion_id": "ac-3",
+      "check_status": "met"
+    },
+    "details": "A single strategy can run against multiple symbols in simulation.",
+    "id": "finding-7",
+    "tags": [
+      "requirements",
+      "simulation",
+      "multi_symbol"
+    ],
+    "task_id": 3,
+    "timestamp": "2026-02-07T15:23:52Z",
+    "title": "ac-3: Requirement appears satisfied"
+  }
+]

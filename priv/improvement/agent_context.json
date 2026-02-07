@@ -1,0 +1,100 @@
+{
+  "budget": {
+    "consumed_seconds": 14124,
+    "last_updated_at": "2026-02-07T15:05:06Z",
+    "limit_seconds": 18000,
+    "remaining_seconds": 3876,
+    "window_end": "2026-02-09T00:00:00Z",
+    "window_start": "2026-02-02T00:00:00Z"
+  },
+  "generated_at": "2026-02-07T15:23:52Z",
+  "objective": "Complete specifications in docs/requirements.md",
+  "pending_tasks": [],
+  "recent_findings": [
+    {
+      "id": "finding-1",
+      "tags": [
+        "requirements",
+        "data_extraction"
+      ],
+      "task_id": 1,
+      "timestamp": "2026-02-07T11:13:21Z",
+      "title": "ac-1: Requirement gap detected"
+    },
+    {
+      "id": "finding-2",
+      "tags": [
+        "requirements",
+        "simulation",
+        "performance"
+      ],
+      "task_id": 2,
+      "timestamp": "2026-02-07T11:13:21Z",
+      "title": "ac-2: Requirement gap detected"
+    },
+    {
+      "id": "finding-3",
+      "tags": [
+        "requirements",
+        "simulation",
+        "multi_symbol"
+      ],
+      "task_id": 3,
+      "timestamp": "2026-02-07T11:13:21Z",
+      "title": "ac-3: Requirement gap detected"
+    },
+    {
+      "id": "finding-4",
+      "tags": [
+        "requirements",
+        "risk",
+        "paper",
+        "live"
+      ],
+      "task_id": 4,
+      "timestamp": "2026-02-07T11:13:21Z",
+      "title": "ac-4: Requirement appears satisfied"
+    },
+    {
+      "id": "finding-5",
+      "tags": [
+        "requirements",
+        "data_extraction"
+      ],
+      "task_id": 1,
+      "timestamp": "2026-02-07T15:23:52Z",
+      "title": "ac-1: Requirement appears satisfied"
+    },
+    {
+      "id": "finding-6",
+      "tags": [
+        "requirements",
+        "simulation",
+        "performance"
+      ],
+      "task_id": 2,
+      "timestamp": "2026-02-07T15:23:52Z",
+      "title": "ac-2: Requirement appears satisfied"
+    },
+    {
+      "id": "finding-7",
+      "tags": [
+        "requirements",
+        "simulation",
+        "multi_symbol"
+      ],
+      "task_id": 3,
+      "timestamp": "2026-02-07T15:23:52Z",
+      "title": "ac-3: Requirement appears satisfied"
+    }
+  ],
+  "recommended_next_actions": [
+    "No open requirement gaps detected by automated checks.",
+    "Run a manual review pass and extend checks for deeper validation."
+  ],
+  "requirements": {
+    "coverage_pct": 100.0,
+    "open_criteria": []
+  },
+  "resume_command": "mix improvement.loop.autorun --iterations 100 --sleep-ms 300 --seed-requirements --stop-when-clean"
+}

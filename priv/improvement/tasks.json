@@ -1,0 +1,146 @@
+{
+  "next_id": 6,
+  "tasks": [
+    {
+      "created_at": "2026-02-07T11:12:23Z",
+      "description": "A CLI command fetches candles for at least one symbol and interval.",
+      "id": 1,
+      "last_result": {
+        "data": {
+          "check_status": "met",
+          "criterion_id": "ac-1",
+          "evidence": [
+            "Found Mix.Tasks.Binance.FetchCandles.run/1",
+            "`Mix.Tasks.Binance.FetchCandles` executes paginated symbol/interval/date-range fetch path"
+          ]
+        },
+        "details": "A CLI command fetches candles for at least one symbol and interval.",
+        "status": "done",
+        "summary": "ac-1: Requirement appears satisfied",
+        "tags": [
+          "requirements",
+          "data_extraction"
+        ]
+      },
+      "payload": {
+        "criterion_description": "A CLI command fetches candles for at least one symbol and interval.",
+        "criterion_id": "ac-1"
+      },
+      "priority": "normal",
+      "status": "done",
+      "title": "Requirement check ac-1",
+      "type": "requirement_gap",
+      "updated_at": "2026-02-07T15:23:52Z"
+    },
+    {
+      "created_at": "2026-02-07T11:12:23Z",
+      "description": "A simulation run can process 3 months of 15m candles in under 5 minutes on a dev machine.",
+      "id": 2,
+      "last_result": {
+        "data": {
+          "check_status": "met",
+          "criterion_id": "ac-2",
+          "evidence": [
+            "Found Mix.Tasks.Binance.SimulationBenchmark.run/1",
+            "`Mix.Tasks.Binance.SimulationBenchmark` executes deterministic 3-month 15m benchmark path",
+            "Processed 25920 events in 0.136333s",
+            "Threshold: 300.000000s for 90 days of 15m candles"
+          ]
+        },
+        "details": "A simulation run can process 3 months of 15m candles in under 5 minutes on a dev machine.",
+        "status": "done",
+        "summary": "ac-2: Requirement appears satisfied",
+        "tags": [
+          "requirements",
+          "simulation",
+          "performance"
+        ]
+      },
+      "payload": {
+        "criterion_description": "A simulation run can process 3 months of 15m candles in under 5 minutes on a dev machine.",
+        "criterion_id": "ac-2"
+      },
+      "priority": "normal",
+      "status": "done",
+      "title": "Requirement check ac-2",
+      "type": "requirement_gap",
+      "updated_at": "2026-02-07T15:23:52Z"
+    },
+    {
+      "created_at": "2026-02-07T11:12:23Z",
+      "description": "A single strategy can run against multiple symbols in simulation.",
+      "id": 3,
+      "last_result": {
+        "data": {
+          "check_status": "met",
+          "criterion_id": "ac-3",
+          "evidence": [
+            "One strategy function processed events for 2 symbols in one simulation run",
+            "Trade log contains fills for all configured symbols"
+          ]
+        },
+        "details": "A single strategy can run against multiple symbols in simulation.",
+        "status": "done",
+        "summary": "ac-3: Requirement appears satisfied",
+        "tags": [
+          "requirements",
+          "simulation",
+          "multi_symbol"
+        ]
+      },
+      "payload": {
+        "criterion_description": "A single strategy can run against multiple symbols in simulation.",
+        "criterion_id": "ac-3"
+      },
+      "priority": "normal",
+      "status": "done",
+      "title": "Requirement check ac-3",
+      "type": "requirement_gap",
+      "updated_at": "2026-02-07T15:23:52Z"
+    },
+    {
+      "created_at": "2026-02-07T11:12:23Z",
+      "description": "All risk checks are enforced in both paper and live modes.",
+      "id": 4,
+      "last_result": {
+        "data": {
+          "check_status": "met",
+          "criterion_id": "ac-4",
+          "evidence": [
+            "Risk gate and both modes found in lib/cripto_trader/order_manager.ex"
+          ]
+        },
+        "details": "All risk checks are enforced in both paper and live modes.",
+        "status": "done",
+        "summary": "ac-4: Requirement appears satisfied",
+        "tags": [
+          "requirements",
+          "risk",
+          "paper",
+          "live"
+        ]
+      },
+      "payload": {
+        "criterion_description": "All risk checks are enforced in both paper and live modes.",
+        "criterion_id": "ac-4"
+      },
+      "priority": "normal",
+      "status": "done",
+      "title": "Requirement check ac-4",
+      "type": "requirement_gap",
+      "updated_at": "2026-02-07T11:13:21Z"
+    },
+    {
+      "created_at": "2026-02-07T15:34:46Z",
+      "description": "Add non-executing advisory mode that evaluates strategy signals and reports buy/sell opportunities without submitting orders; include symbol, side, timestamp, reference price, and rationale metadata.",
+      "id": 5,
+      "last_result": null,
+      "payload": {},
+      "priority": "high",
+      "status": "pending",
+      "title": "Implement signals-only advisory mode for buy/sell recommendations",
+      "type": "note",
+      "updated_at": "2026-02-07T15:34:46Z"
+    }
+  ]
+}
