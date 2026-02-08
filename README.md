@@ -224,6 +224,7 @@ Each event includes relevant fields such as symbol, side, mode, quantity, price,
 
 ## Improvement Loop
 The project includes a file-backed improvement loop to close gaps against `docs/requirements.md`.
+Detailed lifecycle documentation: `docs/improvement_loop_step_by_step.md`.
 
 Storage:
 - `priv/improvement/tasks.json` (future tasks)
