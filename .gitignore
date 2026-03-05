@@ -30,3 +30,6 @@ cripto_trader-*.tar
 
 # Editor backup/temp files
 \#*\#
+
+# Git worktrees
+/.worktrees/
