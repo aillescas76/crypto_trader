@@ -3,7 +3,7 @@ defmodule Mix.Tasks.Binance.Simulate do
 
   alias CriptoTrader.MarketData.{ArchiveCandles, Candles}
   alias CriptoTrader.Simulation.Runner
-  alias CriptoTrader.Strategy.{Alternating, BbRsiReversion, IntradayMomentum}
+  alias CriptoTrader.Strategy.{Alternating, BbRsiReversion, CycleAth, CycleAthConfirm, CycleDca, IntradayMomentum}
 
   @shortdoc "Run a Binance Spot simulation from historical candles"
   @default_speed 100
@@ -288,12 +288,15 @@ defmodule Mix.Tasks.Binance.Simulate do
       "alternating" -> :alternating
       "intraday_momentum" -> :intraday_momentum
       "bb_rsi_reversion" -> :bb_rsi_reversion
-      _ -> Mix.raise("Invalid --strategy. Accepted values: alternating, intraday_momentum, bb_rsi_reversion")
+      "cycle_ath" -> :cycle_ath
+      "cycle_ath_confirm" -> :cycle_ath_confirm
+      "cycle_dca" -> :cycle_dca
+      _ -> Mix.raise("Invalid --strategy. Accepted values: alternating, intraday_momentum, bb_rsi_reversion, cycle_ath, cycle_ath_confirm, cycle_dca")
     end
   end
 
   defp parse_strategy!(_),
-    do: Mix.raise("Invalid --strategy. Accepted values: alternating, intraday_momentum, bb_rsi_reversion")
+    do: Mix.raise("Invalid --strategy. Accepted values: alternating, intraday_momentum, bb_rsi_reversion, cycle_ath, cycle_ath_confirm, cycle_dca")
 
   defp strategy_config(:alternating, symbols, %{quantity: quantity}) do
     {&Alternating.signal/2, Alternating.new_state(symbols, quantity)}
@@ -302,6 +305,18 @@ defmodule Mix.Tasks.Binance.Simulate do
   defp strategy_config(:bb_rsi_reversion, symbols, %{quote_per_trade: quote_per_trade}) do
     {&BbRsiReversion.signal/2,
      BbRsiReversion.new_state(symbols, quote_per_trade: quote_per_trade)}
+  end
+
+  defp strategy_config(:cycle_ath, symbols, %{quote_per_trade: quote_per_trade, trail_pct: trail_pct}) do
+    {&CycleAth.signal/2, CycleAth.new_state(symbols, quote_per_trade: quote_per_trade, trail_pct: trail_pct)}
+  end
+
+  defp strategy_config(:cycle_ath_confirm, symbols, %{quote_per_trade: quote_per_trade, trail_pct: trail_pct}) do
+    {&CycleAthConfirm.signal/2, CycleAthConfirm.new_state(symbols, quote_per_trade: quote_per_trade, trail_pct: trail_pct)}
+  end
+
+  defp strategy_config(:cycle_dca, symbols, %{quote_per_trade: quote_per_trade, trail_pct: trail_pct}) do
+    {&CycleDca.signal/2, CycleDca.new_state(symbols, quote_per_trade: quote_per_trade, trail_pct: trail_pct)}
   end
 
   defp strategy_config(:intraday_momentum, symbols, %{
