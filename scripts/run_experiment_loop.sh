@@ -4,12 +4,16 @@
 # Runs the autonomous strategy experiment loop.
 # Each iteration: Claude Code researches a hypothesis, analyses data,
 # writes a strategy, queues and runs an experiment, records findings.
+# Every --improve-every iterations an /analyse-traces run reviews the
+# sessions and writes a dated improvement report to
+# priv/experiments/trace_analysis/.
 #
 # Usage:
-#   ./scripts/run_experiment_loop.sh                  # run forever
-#   ./scripts/run_experiment_loop.sh --iterations 5   # run N iterations
-#   ./scripts/run_experiment_loop.sh --sleep 600      # seconds between iterations (default 300)
-#   ./scripts/run_experiment_loop.sh --budget 20.00   # stop if API spend exceeds $N
+#   ./scripts/run_experiment_loop.sh                    # run forever
+#   ./scripts/run_experiment_loop.sh --iterations 5     # run N iterations
+#   ./scripts/run_experiment_loop.sh --sleep 600        # seconds between iterations (default 300)
+#   ./scripts/run_experiment_loop.sh --budget 20.00     # stop if API spend exceeds $N
+#   ./scripts/run_experiment_loop.sh --improve-every 3  # analyse traces every N iters (default 5)
 #
 # Prerequisites:
 #   1. mix phx.server running (dashboard + experiment engine):
@@ -27,6 +31,7 @@ set -euo pipefail
 ITERATIONS=0          # 0 = run forever
 SLEEP_SECONDS=300     # seconds between successful iterations
 MAX_BUDGET_USD=""     # empty = no budget cap
+IMPROVE_EVERY=5       # run /analyse-traces every N iterations (0 = disabled)
 LOG_DIR="priv/experiments/loop_logs"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -34,9 +39,10 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # ── Parse args ────────────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --iterations) ITERATIONS="$2"; shift 2 ;;
-    --sleep)      SLEEP_SECONDS="$2"; shift 2 ;;
-    --budget)     MAX_BUDGET_USD="$2"; shift 2 ;;
+    --iterations)   ITERATIONS="$2";   shift 2 ;;
+    --sleep)        SLEEP_SECONDS="$2"; shift 2 ;;
+    --budget)       MAX_BUDGET_USD="$2"; shift 2 ;;
+    --improve-every) IMPROVE_EVERY="$2"; shift 2 ;;
     *) echo "Unknown argument: $1"; exit 1 ;;
   esac
 done
@@ -112,6 +118,31 @@ seconds_until_reset() {
   echo ""
 }
 
+# Run /analyse-traces to review recent experiment sessions and write a report.
+run_improvement() {
+  local n="${1:-$IMPROVE_EVERY}"
+  local improve_log="$LOG_DIR/$(date +%Y-%m-%d_%H-%M-%S)_analyse_traces.log"
+  echo "$(date -Iseconds) ── Improvement run (--last $n) ──────────────────"
+
+  set +e
+  improve_output=$(claude \
+    --dangerously-skip-permissions \
+    --print \
+    "/analyse-traces --last $n" 2>&1)
+  improve_exit=$?
+  set -e
+
+  echo "$improve_output" > "$improve_log"
+
+  if is_usage_limit "$improve_output"; then
+    echo "$(date -Iseconds) Usage limit hit during improvement run. Skipping (will retry next cycle)."
+  elif [[ $improve_exit -ne 0 ]]; then
+    echo "$(date -Iseconds) WARNING: analyse-traces exited $improve_exit. Log: $improve_log"
+  else
+    echo "$(date -Iseconds) Improvement run done. Log: $improve_log"
+  fi
+}
+
 format_duration() {
   local secs="$1"
   if   [[ $secs -ge 3600 ]]; then printf "%dh %dm" $((secs/3600)) $(( (secs%3600)/60 ))
@@ -132,11 +163,12 @@ fi
 # ── Loop ──────────────────────────────────────────────────────────────────────
 iteration=0
 echo "$(date -Iseconds) Starting experiment loop"
-echo "  Iterations : ${ITERATIONS:-∞}"
-echo "  Sleep      : ${SLEEP_SECONDS}s between iterations"
-echo "  Budget cap : ${MAX_BUDGET_USD:-none}"
-echo "  Dashboard  : http://localhost:4000"
-echo "  Logs       : $LOG_DIR/"
+echo "  Iterations    : ${ITERATIONS:-∞}"
+echo "  Sleep         : ${SLEEP_SECONDS}s between iterations"
+echo "  Budget cap    : ${MAX_BUDGET_USD:-none}"
+echo "  Improve every : ${IMPROVE_EVERY} iterations (0=disabled)"
+echo "  Dashboard     : http://localhost:4000"
+echo "  Logs          : $LOG_DIR/"
 echo ""
 
 while true; do
@@ -196,9 +228,18 @@ while true; do
     echo "$(date -Iseconds) Iteration $iteration done. Log: $log_file"
   fi
 
+  # ── Periodic improvement run ────────────────────────────────────────────
+  if [[ "$IMPROVE_EVERY" -gt 0 && $(( iteration % IMPROVE_EVERY )) -eq 0 ]]; then
+    run_improvement "$IMPROVE_EVERY"
+  fi
+
   # ── Check iteration cap ─────────────────────────────────────────────────
   if [[ "$ITERATIONS" -gt 0 && "$iteration" -ge "$ITERATIONS" ]]; then
     echo "$(date -Iseconds) Reached $ITERATIONS iteration(s). Stopping."
+    # Final improvement run if we haven't just done one
+    if [[ "$IMPROVE_EVERY" -gt 0 && $(( iteration % IMPROVE_EVERY )) -ne 0 ]]; then
+      run_improvement "$iteration"
+    fi
     break
   fi
 

@@ -250,6 +250,34 @@ Pages:
 
 Claude Code will: read current status → extract learnings → research new ideas → write a strategy → queue and run experiments → record findings.
 
+### Run the loop autonomously (unattended)
+
+```bash
+./scripts/run_experiment_loop.sh
+```
+
+Runs forever: each iteration invokes `claude --print /loop`, sleeps between iterations, and automatically waits out API usage limits.
+
+Options:
+- `--iterations N` — stop after N iterations (default: run forever)
+- `--sleep N` — seconds to sleep between iterations (default: `300`)
+- `--budget N.NN` — stop if Claude API spend exceeds $N
+- `--improve-every N` — run `/analyse-traces` every N iterations to review process and write an improvement report (default: `5`; use `0` to disable)
+
+Examples:
+```bash
+# Run 10 iterations, analyse traces every 3
+./scripts/run_experiment_loop.sh --iterations 10 --improve-every 3
+
+# Run unattended with a $20 budget cap, default 5-iteration improvement cycle
+./scripts/run_experiment_loop.sh --budget 20.00
+
+# Disable improvement runs
+./scripts/run_experiment_loop.sh --improve-every 0
+```
+
+Logs are written to `priv/experiments/loop_logs/`. Improvement reports are written to `priv/experiments/trace_analysis/`.
+
 ### Queue an experiment manually
 
 ```bash
