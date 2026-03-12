@@ -210,6 +210,22 @@ default_initial_balance: 10_000.0
 
 ---
 
+## File Write Limits (Enforced by Hook)
+
+A `PreToolUse` hook blocks all file writes, edits, and shell write operations outside the project directory. Violations are denied automatically — no exceptions for production files, system config, or home directory dotfiles.
+
+**Allowed write destinations:**
+- `$PROJECT_DIR/**` — anywhere inside this repo
+- `/tmp/**` — temp scripts and analysis output
+- `/dev/null`, `/dev/stderr` — standard sinks
+- `~/.claude/projects/*/memory/**` — Claude project memory files
+
+**Blocked examples:** `~/.bashrc`, `/etc/*`, `~/other_project/*`, any path outside the above.
+
+Shell commands are also scanned: redirections (`>`), `tee`, `cp dest`, `mv dest`, `rm`, and `sed -i` to blocked paths are all denied.
+
+---
+
 ## Safety Rules (Never Break)
 
 - Default trading mode is **paper** — never switch to live without explicit user instruction

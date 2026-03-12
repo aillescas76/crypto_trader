@@ -41,6 +41,24 @@ We are building a Binance trading bot in Elixir. Prioritize safety, testability,
 - Environment variables provide API credentials and runtime options.
 - Elixir/Erlang versions should be recent and compatible.
 
+## File Write Limits (Enforced by Hook)
+
+A `PreToolUse` hook automatically blocks any file write, edit, or shell write operation that targets a path outside this project directory. This cannot be bypassed.
+
+**Allowed write destinations:**
+- `$PROJECT_DIR/**` — anywhere inside this repo
+- `/tmp/**` — temporary scripts and analysis output
+- `/dev/null`, `/dev/stderr` — standard sinks
+- `~/.claude/projects/*/memory/**` — Claude project memory files
+
+**Blocked:** home directory dotfiles, system paths (`/etc`, `/usr`), any other project directory.
+
+Shell write patterns also blocked: `>` redirections, `tee`, `cp`/`mv` to blocked destinations, `rm` of outside paths, `sed -i` on outside files.
+
+If a tool call is denied by the hook, do not attempt to work around it. Adjust the approach to write within allowed paths (use `/tmp/` for intermediate files if needed).
+
+---
+
 ## Experiment Loop
 
 Claude Code runs an autonomous strategy research and backtesting loop using the `/loop` skill.
