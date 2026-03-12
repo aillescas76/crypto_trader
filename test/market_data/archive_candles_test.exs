@@ -99,6 +99,89 @@ defmodule CriptoTrader.MarketData.ArchiveCandlesTest do
     |> Enum.join(",")
   end
 
+  describe "local disk cache" do
+    test "caches downloaded zip to disk and reuses on subsequent calls" do
+      cache_dir = Path.join(System.tmp_dir!(), "archive_cache_test_#{System.unique_integer([:positive])}")
+      on_exit(fn -> File.rm_rf!(cache_dir) end)
+
+      parent = self()
+      start_time = unix_ms!("2024-01-01T00:00:00Z")
+      end_time = unix_ms!("2024-01-31T23:59:59Z")
+      jan_10 = unix_ms!("2024-01-10T00:00:00Z")
+      jan_zip = archive_zip([kline_csv_line(jan_10)])
+
+      download_fun = fn url ->
+        send(parent, {:download_url, url})
+        {:ok, jan_zip}
+      end
+
+      fetch_opts = [
+        symbols: ["BTCUSDT"],
+        interval: "1h",
+        start_time: start_time,
+        end_time: end_time,
+        download_fun: download_fun,
+        cache_dir: cache_dir
+      ]
+
+      # First call: hits network
+      assert {:ok, %{"BTCUSDT" => [_]}} = ArchiveCandles.fetch(fetch_opts)
+      assert_receive {:download_url, _}
+      refute_receive {:download_url, _}, 50
+
+      # Second call: reads from disk cache, no network
+      assert {:ok, %{"BTCUSDT" => [_]}} = ArchiveCandles.fetch(fetch_opts)
+      refute_receive {:download_url, _}, 50
+    end
+
+    test "stores zip file at a predictable path derived from symbol/interval/month" do
+      cache_dir = Path.join(System.tmp_dir!(), "archive_cache_path_test_#{System.unique_integer([:positive])}")
+      on_exit(fn -> File.rm_rf!(cache_dir) end)
+
+      start_time = unix_ms!("2024-03-01T00:00:00Z")
+      end_time = unix_ms!("2024-03-31T23:59:59Z")
+      mar_5 = unix_ms!("2024-03-05T00:00:00Z")
+      mar_zip = archive_zip([kline_csv_line(mar_5)])
+
+      download_fun = fn _url -> {:ok, mar_zip} end
+
+      ArchiveCandles.fetch(
+        symbols: ["ETHUSDT"],
+        interval: "15m",
+        start_time: start_time,
+        end_time: end_time,
+        download_fun: download_fun,
+        cache_dir: cache_dir
+      )
+
+      expected_path = Path.join([cache_dir, "ETHUSDT", "15m", "ETHUSDT-15m-2024-03.zip"])
+      assert File.exists?(expected_path)
+    end
+
+    test "does not cache when download fails" do
+      cache_dir = Path.join(System.tmp_dir!(), "archive_cache_fail_test_#{System.unique_integer([:positive])}")
+      on_exit(fn -> File.rm_rf!(cache_dir) end)
+
+      start_time = unix_ms!("2024-01-01T00:00:00Z")
+      end_time = unix_ms!("2024-01-31T23:59:59Z")
+
+      download_fun = fn _url -> {:error, :not_found} end
+
+      assert {:ok, %{"BTCUSDT" => []}} =
+               ArchiveCandles.fetch(
+                 symbols: ["BTCUSDT"],
+                 interval: "1h",
+                 start_time: start_time,
+                 end_time: end_time,
+                 download_fun: download_fun,
+                 cache_dir: cache_dir
+               )
+
+      # Nothing should have been cached
+      assert not File.exists?(cache_dir)
+    end
+  end
+
   defp archive_zip(lines) do
     csv = Enum.join(lines, "\n") <> "\n"
     {:ok, {_name, binary}} = :zip.create(~c"klines.zip", [{~c"klines.csv", csv}], [:memory])

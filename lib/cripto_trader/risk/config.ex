@@ -3,7 +3,7 @@ defmodule CriptoTrader.Risk.Config do
 
   alias CriptoTrader.Config
 
-  defstruct max_order_quote: 100.0,
+  defstruct max_order_quote: 13_000.0,
             max_drawdown_pct: 0.2,
             circuit_breaker: false
 
@@ -18,7 +18,7 @@ defmodule CriptoTrader.Risk.Config do
     risk = Config.risk_config()
 
     %__MODULE__{
-      max_order_quote: parse_float(Keyword.get(risk, :max_order_quote), 100.0),
+      max_order_quote: parse_float(Keyword.get(risk, :max_order_quote), 13_000.0),
       max_drawdown_pct: parse_float(Keyword.get(risk, :max_drawdown_pct), 0.2),
       circuit_breaker: parse_bool(Keyword.get(risk, :circuit_breaker), false)
     }

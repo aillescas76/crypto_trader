@@ -143,8 +143,10 @@ Options:
 - `--start-time` and `--end-time` (required; Unix ms or ISO8601)
 - `--speed` positive integer replay acceleration (default: `100`)
 - `--mode paper|live` execution mode passed to order placement (default: `paper`)
-- `--strategy alternating` (default: `alternating`)
+- `--strategy alternating|intraday_momentum|bb_rsi_reversion|lateral_range|regime_detector` (default: `alternating`)
 - `--quantity` positive order size used by the alternating strategy (default: `0.1`)
+- `--quote-per-trade` positive quote amount used by `intraday_momentum`, `bb_rsi_reversion`, `lateral_range`, and `regime_detector` (default: `100`)
+- `--stop-loss-pct` positive fraction used by `intraday_momentum`, `lateral_range`, and `regime_detector` (default: `0.02`)
 - `--initial-balance` positive number (default: `10000`)
 - `--include-equity-curve` include per-event equity points in output
 - `--log-strategy-decisions` enable per-event strategy decision debug logs (default: `false`)
@@ -173,8 +175,10 @@ Options:
 - `--symbol` (repeatable) or `--symbols BTCUSDT,ETHUSDT`
 - `--interval` (required)
 - `--mode paper|live` execution mode (default: `paper`)
-- `--strategy alternating` (default: `alternating`)
+- `--strategy alternating|lateral_range` (default: `alternating`)
 - `--quantity` positive order size for the alternating strategy (default: `0.1`)
+- `--quote-per-trade` positive quote amount for `lateral_range` (default: `100`)
+- `--stop-loss-pct` positive fraction for `lateral_range` (default: `0.015`)
 - `--iterations` positive loop count (default: `1`)
 - `--poll-ms` non-negative sleep between iterations (default: `0`)
 - `--limit` candles fetched per symbol per iteration (default: `1`)
@@ -221,6 +225,83 @@ Structured log events are emitted for key execution decisions:
 - `order_event` with `event=order_rejected` from `CriptoTrader.OrderManager` for risk rejections, invalid mode, and downstream execution failures.
 
 Each event includes relevant fields such as symbol, side, mode, quantity, price, and rejection reason when present.
+
+## Experiment Loop
+
+Claude Code runs an autonomous strategy research and backtesting loop. It researches ideas, writes strategy code, queues experiments, and a Phoenix LiveView dashboard shows live progress.
+
+### Start the server
+
+```bash
+mix phx.server
+# Open http://localhost:4000
+```
+
+Pages:
+- `/` — live experiment feed (real-time status via WebSocket)
+- `/findings` — accumulated learnings from all experiments
+- `/feedback` — submit notes for Claude Code to incorporate on next loop iteration
+
+### Run the loop (in Claude Code)
+
+```
+/loop
+```
+
+Claude Code will: read current status → extract learnings → research new ideas → write a strategy → queue and run experiments → record findings.
+
+### Queue an experiment manually
+
+```bash
+mix experiments.add \
+  --strategy CriptoTrader.Strategy.BuyAndHold \
+  --hypothesis "Sanity check baseline" \
+  --symbols BTCUSDC,ETHUSDC \
+  --interval 15m \
+  --balance 10000
+```
+
+### Run pending experiments
+
+```bash
+mix experiments.run --all-pending   # run all pending
+mix experiments.run --id exp-123    # run one specific experiment
+```
+
+### View status table
+
+```bash
+mix experiments.status
+```
+
+### Add a finding
+
+```bash
+mix experiments.findings.add \
+  --title "BuyAndHold: strong baseline in bull markets" \
+  --experiment exp-123 \
+  --tags baseline,bull
+```
+
+### State files
+
+All state is in `priv/experiments/` (JSON, git-tracked):
+- `hypotheses.json` — research hypotheses
+- `experiments.json` — experiment records with results
+- `findings.json` — accumulated learnings
+- `feedback.json` — user notes for next loop iteration
+
+### Pass criteria
+
+An experiment passes if on **both** training (before 2025-01-01) and validation (2025-01-01+) splits:
+- Strategy PnL% > BuyAndHold PnL%
+- AND (Sharpe > BuyAndHold Sharpe OR max_drawdown < 40%)
+
+### Experimental strategies
+
+New strategies go in `lib/cripto_trader/strategy/experiment/YYYYMMDD_<concept>.ex`. Graduated strategies (passing experiments) move to `lib/cripto_trader/strategy/`.
+
+---
 
 ## Improvement Loop
 The project includes a file-backed improvement loop to close gaps against `docs/requirements.md`.

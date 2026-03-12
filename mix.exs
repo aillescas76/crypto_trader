@@ -24,7 +24,12 @@ defmodule CriptoTrader.MixProject do
     [
       {:finch, "~> 0.18"},
       {:jason, "~> 1.4"},
-      {:req, "~> 0.5"}
+      {:req, "~> 0.5"},
+      {:phoenix, "~> 1.7"},
+      {:phoenix_live_view, "~> 1.0"},
+      {:phoenix_html, "~> 4.0"},
+      {:phoenix_pubsub, "~> 2.1"},
+      {:plug_cowboy, "~> 2.7"}
     ]
   end
 end

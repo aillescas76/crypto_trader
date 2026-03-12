@@ -111,6 +111,69 @@ defmodule Mix.Tasks.Binance.TradeTest do
     assert payload["mode"] == "live"
   end
 
+  test "supports lateral_range strategy selection" do
+    parent = self()
+
+    Application.put_env(:cripto_trader, :trading_robot_fun, fn opts ->
+      send(parent, {:robot_opts, opts})
+
+      strategy_fun = Keyword.fetch!(opts, :strategy_fun)
+      strategy_state = Keyword.fetch!(opts, :strategy_state)
+
+      {orders, _state} =
+        strategy_fun.(%{symbol: "BTCUSDC", candle: %{close: "100.0"}}, strategy_state)
+
+      send(parent, {:strategy_orders, orders})
+
+      {:ok,
+       %{
+         mode: "paper",
+         summary: %{events_processed: 1, accepted_orders: 0, rejected_orders: 0},
+         trade_log: []
+       }}
+    end)
+
+    output =
+      capture_io(fn ->
+        run_task([
+          "--symbol",
+          "BTCUSDC",
+          "--interval",
+          "1m",
+          "--strategy",
+          "lateral_range",
+          "--quote-per-trade",
+          "120",
+          "--stop-loss-pct",
+          "0.01"
+        ])
+      end)
+
+    assert_receive {:robot_opts, opts}
+    assert is_function(Keyword.fetch!(opts, :strategy_fun), 2)
+    assert_receive {:strategy_orders, []}
+
+    payload = Jason.decode!(output)
+    assert payload["strategy"] == "lateral_range"
+    assert payload["quote_per_trade"] == 120.0
+    assert payload["stop_loss_pct"] == 0.01
+  end
+
+  test "rejects invalid strategy value" do
+    assert_raise Mix.Error,
+                 ~r/Invalid --strategy. Accepted values: alternating, lateral_range/,
+                 fn ->
+                   run_task([
+                     "--symbol",
+                     "BTCUSDC",
+                     "--interval",
+                     "1m",
+                     "--strategy",
+                     "unknown"
+                   ])
+                 end
+  end
+
   test "rejects invalid mode value" do
     assert_raise Mix.Error, ~r/Invalid --mode. Accepted values: paper, live/, fn ->
       run_task([

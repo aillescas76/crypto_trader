@@ -3,7 +3,16 @@ defmodule Mix.Tasks.Binance.Simulate do
 
   alias CriptoTrader.MarketData.{ArchiveCandles, Candles}
   alias CriptoTrader.Simulation.Runner
-  alias CriptoTrader.Strategy.{Alternating, BbRsiReversion, IntradayMomentum}
+
+  alias CriptoTrader.Strategy.{
+    AltcoinCycle,
+    Alternating,
+    BbRsiReversion,
+    BuyAndHold,
+    IntradayMomentum,
+    LateralRange,
+    RegimeDetector
+  }
 
   @shortdoc "Run a Binance Spot simulation from historical candles"
   @default_speed 100
@@ -32,9 +41,14 @@ defmodule Mix.Tasks.Binance.Simulate do
           quote_per_trade: :string,
           stop_loss_pct: :string,
           trail_pct: :string,
+          alt_trail_pct: :string,
+          entry_ath: :string,
+          initial_ath: :string,
           initial_balance: :string,
           include_equity_curve: :boolean,
-          log_strategy_decisions: :boolean
+          log_strategy_decisions: :boolean,
+          cache_dir: :string,
+          no_cache: :boolean
         ],
         aliases: [s: :symbol, i: :interval]
       )
@@ -71,6 +85,24 @@ defmodule Mix.Tasks.Binance.Simulate do
         :trail_pct
       )
 
+    alt_trail_pct =
+      parse_positive_number!(
+        Keyword.get(opts, :alt_trail_pct, "0.35"),
+        :alt_trail_pct
+      )
+
+    entry_ath =
+      parse_nonneg_number!(
+        Keyword.get(opts, :entry_ath, "0.0"),
+        :entry_ath
+      )
+
+    initial_ath =
+      parse_nonneg_number!(
+        Keyword.get(opts, :initial_ath, "0.0"),
+        :initial_ath
+      )
+
     initial_balance =
       parse_positive_number!(
         Keyword.get(opts, :initial_balance, @default_initial_balance),
@@ -90,7 +122,10 @@ defmodule Mix.Tasks.Binance.Simulate do
         quantity: quantity,
         quote_per_trade: quote_per_trade,
         stop_loss_pct: stop_loss_pct,
-        trail_pct: trail_pct
+        trail_pct: trail_pct,
+        alt_trail_pct: alt_trail_pct,
+        entry_ath: entry_ath,
+        initial_ath: initial_ath
       })
 
     case fetch_fun.(fetch_opts) do
@@ -147,13 +182,23 @@ defmodule Mix.Tasks.Binance.Simulate do
     ]
   end
 
-  defp fetch_opts!(:archive, symbols, interval, start_time, end_time, _opts) do
-    [
+  defp fetch_opts!(:archive, symbols, interval, start_time, end_time, opts) do
+    base = [
       symbols: symbols,
       interval: interval,
       start_time: start_time,
       end_time: end_time
     ]
+
+    if Keyword.get(opts, :no_cache, false) do
+      base
+    else
+      cache_dir =
+        Keyword.get(opts, :cache_dir) ||
+          Path.join(System.user_home!(), ".cripto_trader/archive_cache")
+
+      base ++ [cache_dir: cache_dir]
+    end
   end
 
   defp parse_symbols(opts) do
@@ -278,6 +323,26 @@ defmodule Mix.Tasks.Binance.Simulate do
     )
   end
 
+  defp parse_nonneg_number!(value, _key) when is_number(value) and value >= 0, do: value * 1.0
+
+  defp parse_nonneg_number!(value, key) when is_binary(value) do
+    case Float.parse(String.trim(value)) do
+      {number, ""} when number >= 0.0 ->
+        number
+
+      _ ->
+        Mix.raise(
+          "Invalid --#{key |> to_string() |> String.replace("_", "-")}. Use a non-negative number."
+        )
+    end
+  end
+
+  defp parse_nonneg_number!(_value, key) do
+    Mix.raise(
+      "Invalid --#{key |> to_string() |> String.replace("_", "-")}. Use a non-negative number."
+    )
+  end
+
   defp parse_limit!(limit) when is_integer(limit) and limit > 0 and limit <= @default_limit,
     do: limit
 
@@ -285,23 +350,94 @@ defmodule Mix.Tasks.Binance.Simulate do
 
   defp parse_strategy!(strategy) when is_binary(strategy) do
     case strategy |> String.trim() |> String.downcase() do
-      "alternating" -> :alternating
-      "intraday_momentum" -> :intraday_momentum
-      "bb_rsi_reversion" -> :bb_rsi_reversion
-      _ -> Mix.raise("Invalid --strategy. Accepted values: alternating, intraday_momentum, bb_rsi_reversion")
+      "alternating" ->
+        :alternating
+
+      "intraday_momentum" ->
+        :intraday_momentum
+
+      "bb_rsi_reversion" ->
+        :bb_rsi_reversion
+
+      "lateral_range" ->
+        :lateral_range
+
+      "regime_detector" ->
+        :regime_detector
+
+      "buy_and_hold" ->
+        :buy_and_hold
+
+      "altcoin_cycle" ->
+        :altcoin_cycle
+
+      _ ->
+        Mix.raise(
+          "Invalid --strategy. Accepted values: alternating, intraday_momentum, bb_rsi_reversion, lateral_range, regime_detector, buy_and_hold, altcoin_cycle"
+        )
     end
   end
 
   defp parse_strategy!(_),
-    do: Mix.raise("Invalid --strategy. Accepted values: alternating, intraday_momentum, bb_rsi_reversion")
+    do:
+      Mix.raise(
+        "Invalid --strategy. Accepted values: alternating, intraday_momentum, bb_rsi_reversion, lateral_range, regime_detector, buy_and_hold, altcoin_cycle"
+      )
 
   defp strategy_config(:alternating, symbols, %{quantity: quantity}) do
     {&Alternating.signal/2, Alternating.new_state(symbols, quantity)}
   end
 
+  defp strategy_config(:buy_and_hold, symbols, %{quote_per_trade: quote_per_trade}) do
+    {&BuyAndHold.signal/2, BuyAndHold.new_state(symbols, quote_per_trade: quote_per_trade)}
+  end
+
   defp strategy_config(:bb_rsi_reversion, symbols, %{quote_per_trade: quote_per_trade}) do
     {&BbRsiReversion.signal/2,
      BbRsiReversion.new_state(symbols, quote_per_trade: quote_per_trade)}
+  end
+
+  defp strategy_config(:lateral_range, symbols, %{
+         quote_per_trade: quote_per_trade,
+         stop_loss_pct: stop_loss_pct
+       }) do
+    {&LateralRange.signal/2,
+     LateralRange.new_state(symbols,
+       quote_per_trade: quote_per_trade,
+       stop_loss_pct: stop_loss_pct
+     )}
+  end
+
+  defp strategy_config(:regime_detector, symbols, %{
+         quote_per_trade: quote_per_trade,
+         stop_loss_pct: stop_loss_pct,
+         trail_pct: trail_pct
+       }) do
+    {&RegimeDetector.signal/2,
+     RegimeDetector.new_state(symbols,
+       quote_per_trade: quote_per_trade,
+       stop_loss_pct: stop_loss_pct,
+       trail_pct: trail_pct,
+       # Use 1h candles for regime detection regardless of signal interval
+       adx_timeframe_ms: 3_600_000
+     )}
+  end
+
+  defp strategy_config(:altcoin_cycle, symbols, %{
+         quote_per_trade: quote_per_trade,
+         trail_pct: trail_pct,
+         alt_trail_pct: alt_trail_pct,
+         entry_ath: entry_ath,
+         initial_ath: initial_ath
+       }) do
+    {&AltcoinCycle.signal/2,
+     AltcoinCycle.new_state(symbols,
+       quote_per_trade: quote_per_trade,
+       trail_pct: trail_pct,
+       alt_trail_pct: alt_trail_pct,
+       entry_ath: entry_ath,
+       initial_ath: initial_ath
+     )}
   end
 
   defp strategy_config(:intraday_momentum, symbols, %{
@@ -348,9 +484,13 @@ defmodule Mix.Tasks.Binance.Simulate do
 
   defp output_source(:rest), do: "binance_spot_rest"
   defp output_source(:archive), do: "binance_spot_archive"
+  defp output_strategy(:altcoin_cycle), do: "altcoin_cycle"
+  defp output_strategy(:regime_detector), do: "regime_detector"
   defp output_strategy(:alternating), do: "alternating"
   defp output_strategy(:bb_rsi_reversion), do: "bb_rsi_reversion"
   defp output_strategy(:intraday_momentum), do: "intraday_momentum"
+  defp output_strategy(:lateral_range), do: "lateral_range"
+  defp output_strategy(:buy_and_hold), do: "buy_and_hold"
   defp output_mode(:paper), do: "paper"
   defp output_mode(:live), do: "live"
 

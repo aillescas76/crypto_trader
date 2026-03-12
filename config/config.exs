@@ -17,3 +17,13 @@ config :cripto_trader, :improvement,
   weekly_budget_seconds: System.get_env("IMPROVEMENT_WEEKLY_BUDGET_SECONDS") || 18_000,
   codex_cmd: System.get_env("CODEX_CMD") || "codex",
   codex_timeout_ms: System.get_env("IMPROVEMENT_CODEX_TIMEOUT_MS") || 3_600_000
+
+config :cripto_trader, CriptoTraderWeb.Endpoint,
+  http: [port: String.to_integer(System.get_env("PORT") || "4000")],
+  secret_key_base:
+    System.get_env("SECRET_KEY_BASE") ||
+      "ExperimentLoopDevKeyNotForProd00000000000000000000000000000000000000",
+  pubsub_server: CriptoTrader.PubSub,
+  live_view: [signing_salt: "xp_loop_salt"]
+
+config :phoenix, :json_library, Jason

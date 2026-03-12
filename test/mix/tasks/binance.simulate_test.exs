@@ -225,21 +225,85 @@ defmodule Mix.Tasks.Binance.SimulateTest do
     assert payload["log_strategy_decisions"] == true
   end
 
+  test "supports lateral_range strategy selection" do
+    parent = self()
+
+    Application.put_env(:cripto_trader, :simulation_archive_candles_fetch_fun, fn _opts ->
+      {:ok, %{"BTCUSDC" => [%{open_time: 1_704_067_200_000, close: "100.0"}]}}
+    end)
+
+    Application.put_env(:cripto_trader, :simulation_runner_fun, fn opts ->
+      send(parent, {:runner_opts, opts})
+
+      strategy_fun = Keyword.fetch!(opts, :strategy_fun)
+      strategy_state = Keyword.fetch!(opts, :strategy_state)
+
+      {orders, _state} =
+        strategy_fun.(%{symbol: "BTCUSDC", candle: %{close: "100.0"}}, strategy_state)
+
+      send(parent, {:strategy_orders, orders})
+
+      {:ok,
+       %{
+         trade_log: [],
+         summary: %{
+           pnl: 0.0,
+           win_rate: 0.0,
+           max_drawdown_pct: 0.0,
+           trades: 0,
+           rejected_orders: 0,
+           closed_trades: 0,
+           events_processed: 1
+         },
+         equity_curve: []
+       }}
+    end)
+
+    output =
+      capture_io(fn ->
+        run_task([
+          "--symbol",
+          "BTCUSDC",
+          "--interval",
+          "15m",
+          "--start-time",
+          "2024-01-01T00:00:00Z",
+          "--end-time",
+          "2024-01-01T00:15:00Z",
+          "--strategy",
+          "lateral_range",
+          "--quote-per-trade",
+          "150",
+          "--stop-loss-pct",
+          "0.01"
+        ])
+      end)
+
+    assert_receive {:runner_opts, runner_opts}
+    assert is_function(Keyword.fetch!(runner_opts, :strategy_fun), 2)
+    assert_receive {:strategy_orders, []}
+
+    payload = Jason.decode!(output)
+    assert payload["strategy"] == "lateral_range"
+  end
+
   test "rejects invalid strategy value" do
-    assert_raise Mix.Error, ~r/Invalid --strategy. Accepted values: alternating/, fn ->
-      run_task([
-        "--symbol",
-        "BTCUSDT",
-        "--interval",
-        "15m",
-        "--start-time",
-        "2024-01-01T00:00:00Z",
-        "--end-time",
-        "2024-01-01T00:15:00Z",
-        "--strategy",
-        "mean_reversion"
-      ])
-    end
+    assert_raise Mix.Error,
+                 ~r/Invalid --strategy. Accepted values: alternating, intraday_momentum, bb_rsi_reversion, lateral_range, regime_detector/,
+                 fn ->
+                   run_task([
+                     "--symbol",
+                     "BTCUSDT",
+                     "--interval",
+                     "15m",
+                     "--start-time",
+                     "2024-01-01T00:00:00Z",
+                     "--end-time",
+                     "2024-01-01T00:15:00Z",
+                     "--strategy",
+                     "mean_reversion"
+                   ])
+                 end
   end
 
   test "rejects invalid mode value" do

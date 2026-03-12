@@ -37,6 +37,8 @@ defmodule CriptoTrader.MarketData.ArchiveCandles do
          {:ok, month_keys} <- month_keys(start_time, end_time),
          {:ok, download_fun} <- validate_download_fun(Keyword.get(opts, :download_fun)) do
       base_url = Keyword.get(opts, :base_url, @archive_base_url)
+      cache_dir = Keyword.get(opts, :cache_dir)
+      download_fun = maybe_wrap_with_cache(download_fun, cache_dir)
 
       Enum.reduce_while(symbols, {:ok, %{}}, fn symbol, {:ok, acc} ->
         case fetch_symbol(
@@ -189,13 +191,13 @@ defmodule CriptoTrader.MarketData.ArchiveCandles do
                  {:ok, parsed_number_of_trades} <- parse_non_neg_int(number_of_trades) do
               {:ok,
                %{
-                 open_time: parsed_open_time,
+                 open_time: to_milliseconds(parsed_open_time),
                  open: open,
                  high: high,
                  low: low,
                  close: close,
                  volume: volume,
-                 close_time: parsed_close_time,
+                 close_time: to_milliseconds(parsed_close_time),
                  quote_asset_volume: quote_asset_volume,
                  number_of_trades: parsed_number_of_trades,
                  taker_buy_base_volume: taker_buy_base_volume,
@@ -242,6 +244,34 @@ defmodule CriptoTrader.MarketData.ArchiveCandles do
     do: {:ok, download_fun}
 
   defp validate_download_fun(_), do: {:error, :invalid_download_fun}
+
+  defp maybe_wrap_with_cache(download_fun, nil), do: download_fun
+
+  defp maybe_wrap_with_cache(download_fun, cache_dir) when is_binary(cache_dir) do
+    fn url ->
+      cache_path = cache_path(cache_dir, url)
+
+      if File.exists?(cache_path) do
+        {:ok, File.read!(cache_path)}
+      else
+        case download_fun.(url) do
+          {:ok, binary} ->
+            cache_path |> Path.dirname() |> File.mkdir_p!()
+            File.write!(cache_path, binary)
+            {:ok, binary}
+
+          other ->
+            other
+        end
+      end
+    end
+  end
+
+  defp cache_path(cache_dir, url) do
+    # Extract last 3 path segments: symbol/interval/filename.zip
+    segments = url |> URI.parse() |> Map.get(:path, url) |> String.split("/") |> Enum.take(-3)
+    Path.join([cache_dir | segments])
+  end
 
   defp default_download(url) when is_binary(url) do
     case Req.get(url: url, decode_body: false) do
@@ -296,4 +326,9 @@ defmodule CriptoTrader.MarketData.ArchiveCandles do
   end
 
   defp parse_non_neg_int(_), do: {:error, :invalid_integer}
+
+  # Binance switched from milliseconds to microseconds in 2025 archive files.
+  # Normalize to milliseconds by dividing microsecond timestamps (16 digits) by 1000.
+  defp to_milliseconds(ts) when ts > 9_999_999_999_999, do: div(ts, 1000)
+  defp to_milliseconds(ts), do: ts
 end

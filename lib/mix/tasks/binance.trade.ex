@@ -1,7 +1,7 @@
 defmodule Mix.Tasks.Binance.Trade do
   use Mix.Task
 
-  alias CriptoTrader.Strategy.Alternating
+  alias CriptoTrader.Strategy.{Alternating, LateralRange}
   alias CriptoTrader.Trading.Robot
 
   @shortdoc "Run a Binance Spot trading robot loop (paper by default)"
@@ -23,6 +23,8 @@ defmodule Mix.Tasks.Binance.Trade do
           mode: :string,
           strategy: :string,
           quantity: :string,
+          quote_per_trade: :string,
+          stop_loss_pct: :string,
           iterations: :integer,
           poll_ms: :integer,
           limit: :integer,
@@ -41,6 +43,13 @@ defmodule Mix.Tasks.Binance.Trade do
     mode = parse_mode!(Keyword.get(opts, :mode, "paper"))
     strategy = parse_strategy!(Keyword.get(opts, :strategy, "alternating"))
     quantity = parse_positive_number!(Keyword.get(opts, :quantity, @default_quantity), :quantity)
+
+    quote_per_trade =
+      parse_positive_number!(Keyword.get(opts, :quote_per_trade, "100.0"), :quote_per_trade)
+
+    stop_loss_pct =
+      parse_positive_number!(Keyword.get(opts, :stop_loss_pct, "0.015"), :stop_loss_pct)
+
     iterations = parse_pos_int!(Keyword.get(opts, :iterations, @default_iterations), :iterations)
     poll_ms = parse_non_neg_int!(Keyword.get(opts, :poll_ms, @default_poll_ms), :poll_ms)
     limit = parse_pos_int!(Keyword.get(opts, :limit, @default_limit), :limit)
@@ -48,7 +57,12 @@ defmodule Mix.Tasks.Binance.Trade do
     end_time = parse_optional_time!(Keyword.get(opts, :end_time))
     validate_range!(start_time, end_time)
 
-    {strategy_fun, strategy_state} = strategy_config(strategy, symbols, quantity)
+    {strategy_fun, strategy_state} =
+      strategy_config(strategy, symbols, %{
+        quantity: quantity,
+        quote_per_trade: quote_per_trade,
+        stop_loss_pct: stop_loss_pct
+      })
 
     robot_opts =
       [
@@ -73,6 +87,8 @@ defmodule Mix.Tasks.Binance.Trade do
           mode: output_mode(mode),
           strategy: output_strategy(strategy),
           quantity: quantity,
+          quote_per_trade: quote_per_trade,
+          stop_loss_pct: stop_loss_pct,
           iterations: iterations,
           poll_ms: poll_ms,
           limit: limit,
@@ -136,11 +152,13 @@ defmodule Mix.Tasks.Binance.Trade do
   defp parse_strategy!(strategy) when is_binary(strategy) do
     case strategy |> String.trim() |> String.downcase() do
       "alternating" -> :alternating
-      _ -> Mix.raise("Invalid --strategy. Accepted values: alternating")
+      "lateral_range" -> :lateral_range
+      _ -> Mix.raise("Invalid --strategy. Accepted values: alternating, lateral_range")
     end
   end
 
-  defp parse_strategy!(_), do: Mix.raise("Invalid --strategy. Accepted values: alternating")
+  defp parse_strategy!(_),
+    do: Mix.raise("Invalid --strategy. Accepted values: alternating, lateral_range")
 
   defp parse_positive_number!(value, _key) when is_number(value) and value > 0, do: value * 1.0
 
@@ -207,13 +225,25 @@ defmodule Mix.Tasks.Binance.Trade do
   defp validate_range!(_start_time, _end_time),
     do: Mix.raise("--start-time must be <= --end-time")
 
-  defp strategy_config(:alternating, symbols, quantity) do
+  defp strategy_config(:alternating, symbols, %{quantity: quantity}) do
     {&Alternating.signal/2, Alternating.new_state(symbols, quantity)}
+  end
+
+  defp strategy_config(:lateral_range, symbols, %{
+         quote_per_trade: quote_per_trade,
+         stop_loss_pct: stop_loss_pct
+       }) do
+    {&LateralRange.signal/2,
+     LateralRange.new_state(symbols,
+       quote_per_trade: quote_per_trade,
+       stop_loss_pct: stop_loss_pct
+     )}
   end
 
   defp output_mode(:paper), do: "paper"
   defp output_mode(:live), do: "live"
   defp output_strategy(:alternating), do: "alternating"
+  defp output_strategy(:lateral_range), do: "lateral_range"
 
   defp robot_fun do
     case Application.get_env(:cripto_trader, :trading_robot_fun) do
