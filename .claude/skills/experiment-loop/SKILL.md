@@ -13,6 +13,8 @@ The most common mistake is moving to Step 6 (write strategy) before the hypothes
 
 ## Step 1 — Situational Awareness
 
+Read `.claude/context/experiment-loop.md` for API reference, constants, and the strategy skeleton before doing anything else.
+
 ```bash
 mix experiments.status
 ```
