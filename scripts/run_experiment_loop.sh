@@ -8,32 +8,30 @@
 # Usage:
 #   ./scripts/run_experiment_loop.sh                  # run forever
 #   ./scripts/run_experiment_loop.sh --iterations 5   # run N iterations
-#   ./scripts/run_experiment_loop.sh --sleep 600       # seconds between iterations (default 300)
-#   ./scripts/run_experiment_loop.sh --budget 20.00    # stop if API spend exceeds $N
+#   ./scripts/run_experiment_loop.sh --sleep 600      # seconds between iterations (default 300)
+#   ./scripts/run_experiment_loop.sh --budget 20.00   # stop if API spend exceeds $N
 #
 # Prerequisites:
-#   1. mix phx.server running (dashboard + engine):
+#   1. mix phx.server running (dashboard + experiment engine):
 #        mix phx.server &
-#        echo "Dashboard: http://localhost:4000"
+#        # Dashboard: http://localhost:4000
 #
-#   2. Claude Code installed: claude --version
+#   2. Claude Code installed:
+#        claude --version
 #
-#   3. Archive candle cache warmed up (first run fetches; subsequent runs use cache):
-#        mix binance.simulate --source archive --symbols BTCUSDC --interval 15m \
-#          --start-time 2022-01-01T00:00:00Z --end-time 2024-12-31T23:59:59Z \
-#          --strategy buy_and_hold 2>/dev/null || true
+#   3. Archive candle cache warmed (first run downloads; subsequent runs use cache).
 
 set -euo pipefail
 
-# ── Defaults ────────────────────────────────────────────────────────────────
+# ── Defaults ─────────────────────────────────────────────────────────────────
 ITERATIONS=0          # 0 = run forever
-SLEEP_SECONDS=300     # 5 minutes between iterations
+SLEEP_SECONDS=300     # seconds between successful iterations
 MAX_BUDGET_USD=""     # empty = no budget cap
 LOG_DIR="priv/experiments/loop_logs"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# ── Parse args ───────────────────────────────────────────────────────────────
+# ── Parse args ────────────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --iterations) ITERATIONS="$2"; shift 2 ;;
@@ -43,22 +41,102 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# ── Setup ────────────────────────────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+# Detect usage/rate limit in claude output.
+# Claude shows messages like:
+#   "Claude AI usage limit reached"
+#   "You've hit your limit · resets 10pm (America/New_York)"
+#   "rate limit"  /  "Rate limit"
+is_usage_limit() {
+  local output="$1"
+  echo "$output" | grep -qiE \
+    "usage limit|rate limit|hit your limit|quota exceeded|too many requests|resets [0-9]"
+}
+
+# Try to extract seconds until reset from the claude output.
+# Handles:
+#   "resets 10pm (America/New_York)"
+#   "resets in 2 hours"
+#   "retry after 3600 seconds"
+#   "retry-after: 18000"
+seconds_until_reset() {
+  local output="$1"
+  local now
+  now=$(date +%s)
+
+  # "retry-after: N" or "retry after N seconds"
+  if echo "$output" | grep -iqE "retry.after:?\s*[0-9]+"; then
+    local secs
+    secs=$(echo "$output" | grep -ioE "retry.after:?\s*[0-9]+" | grep -oE "[0-9]+" | head -1)
+    if [[ -n "$secs" && "$secs" -gt 0 ]]; then
+      echo "$secs"
+      return
+    fi
+  fi
+
+  # "resets in X hours" / "resets in X minutes"
+  if echo "$output" | grep -iqE "resets in [0-9]+ (hour|minute)"; then
+    local num unit
+    num=$(echo "$output" | grep -ioE "resets in ([0-9]+) (hour|minute)" | grep -oE "^[0-9]+" | head -1)
+    unit=$(echo "$output" | grep -ioE "resets in [0-9]+ (hour|minute)" | grep -oE "(hour|minute)$" | head -1)
+    if [[ -n "$num" ]]; then
+      if [[ "$unit" == "hour" ]]; then echo $((num * 3600)); return; fi
+      if [[ "$unit" == "minute" ]]; then echo $((num * 60)); return; fi
+    fi
+  fi
+
+  # "resets HH:MMam/pm" or "resets 10pm"
+  if echo "$output" | grep -iqE "resets [0-9]+(:[0-9]+)?(am|pm)"; then
+    local time_str tz reset_epoch
+    time_str=$(echo "$output" | grep -ioE "resets [0-9]+(:[0-9]+)?(am|pm)" | sed 's/resets //' | head -1)
+    # Try to parse timezone from the same line
+    tz=$(echo "$output" | grep -ioE "\(([A-Za-z/_]+)\)" | tr -d '()' | head -1)
+    if [[ -n "$tz" ]]; then
+      reset_epoch=$(TZ="$tz" date -d "$time_str" +%s 2>/dev/null || true)
+    else
+      reset_epoch=$(date -d "$time_str" +%s 2>/dev/null || true)
+    fi
+    if [[ -n "$reset_epoch" && "$reset_epoch" -gt "$now" ]]; then
+      echo $(( reset_epoch - now + 60 ))   # +60s buffer
+      return
+    fi
+    # If parsed time is in the past, it might be tomorrow
+    if [[ -n "$reset_epoch" && "$reset_epoch" -le "$now" ]]; then
+      echo $(( reset_epoch - now + 86400 + 60 ))
+      return
+    fi
+  fi
+
+  # Fallback: return empty (caller will use default backoff)
+  echo ""
+}
+
+format_duration() {
+  local secs="$1"
+  if   [[ $secs -ge 3600 ]]; then printf "%dh %dm" $((secs/3600)) $(( (secs%3600)/60 ))
+  elif [[ $secs -ge 60   ]]; then printf "%dm %ds" $((secs/60)) $((secs%60))
+  else                             printf "%ds" "$secs"
+  fi
+}
+
+# ── Setup ─────────────────────────────────────────────────────────────────────
 cd "$PROJECT_DIR"
 mkdir -p "$LOG_DIR"
 
-# Check prerequisites
 if ! command -v claude &>/dev/null; then
   echo "ERROR: claude not found in PATH. Install Claude Code first."
   exit 1
 fi
 
-# ── Loop ─────────────────────────────────────────────────────────────────────
+# ── Loop ──────────────────────────────────────────────────────────────────────
 iteration=0
-echo "$(date -Iseconds) Starting experiment loop (iterations=${ITERATIONS:-∞}, sleep=${SLEEP_SECONDS}s)"
-echo "  Dashboard: http://localhost:4000"
-echo "  Logs: $LOG_DIR/"
-echo "  State: priv/experiments/"
+echo "$(date -Iseconds) Starting experiment loop"
+echo "  Iterations : ${ITERATIONS:-∞}"
+echo "  Sleep      : ${SLEEP_SECONDS}s between iterations"
+echo "  Budget cap : ${MAX_BUDGET_USD:-none}"
+echo "  Dashboard  : http://localhost:4000"
+echo "  Logs       : $LOG_DIR/"
 echo ""
 
 while true; do
@@ -72,26 +150,55 @@ while true; do
     claude
     --dangerously-skip-permissions
     --print
-    "/loop"
   )
+  [[ -n "$MAX_BUDGET_USD" ]] && claude_cmd+=(--max-budget-usd "$MAX_BUDGET_USD")
+  claude_cmd+=("/loop")
 
-  # Optional budget cap
-  if [[ -n "$MAX_BUDGET_USD" ]]; then
-    claude_cmd+=(--max-budget-usd "$MAX_BUDGET_USD")
+  # Run, capture output and exit code
+  set +e
+  output=$("${claude_cmd[@]}" 2>&1)
+  exit_code=$?
+  set -e
+
+  # Write log
+  echo "$output" > "$log_file"
+
+  # ── Detect usage/rate limit ─────────────────────────────────────────────
+  if is_usage_limit "$output"; then
+    echo "$output" | grep -iE "limit|resets|retry" | head -3 || true
+
+    wait_secs=$(seconds_until_reset "$output")
+
+    if [[ -n "$wait_secs" && "$wait_secs" -gt 0 ]]; then
+      wake_time=$(date -d "+${wait_secs} seconds" "+%Y-%m-%d %H:%M:%S" 2>/dev/null \
+                  || date -v +${wait_secs}S "+%Y-%m-%d %H:%M:%S" 2>/dev/null \
+                  || echo "unknown")
+      echo "$(date -Iseconds) Usage limit hit. Sleeping $(format_duration $wait_secs) (until ~$wake_time)"
+    else
+      # No reset time parsed — default to 5h10m (covers the rolling 5h window)
+      wait_secs=18600
+      wake_time=$(date -d "+${wait_secs} seconds" "+%Y-%m-%d %H:%M:%S" 2>/dev/null \
+                  || date -v +${wait_secs}S "+%Y-%m-%d %H:%M:%S" 2>/dev/null \
+                  || echo "unknown")
+      echo "$(date -Iseconds) Usage limit hit (no reset time found). Sleeping $(format_duration $wait_secs) until ~$wake_time"
+    fi
+
+    sleep "$wait_secs"
+    echo "$(date -Iseconds) Resuming after usage limit sleep."
+    continue   # retry same iteration (don't increment, don't sleep extra)
   fi
 
-  # Run one loop iteration, tee output to log
-  if "${claude_cmd[@]}" 2>&1 | tee "$log_file"; then
-    echo "$(date -Iseconds) Iteration $iteration completed. Log: $log_file"
+  # ── Normal exit handling ────────────────────────────────────────────────
+  if [[ $exit_code -ne 0 ]]; then
+    echo "$(date -Iseconds) WARNING: claude exited $exit_code. Log: $log_file"
+    # Don't stop — transient errors are expected; the state files are safe
   else
-    exit_code=$?
-    echo "$(date -Iseconds) WARNING: claude exited with code $exit_code. Log: $log_file"
-    # Don't stop on non-zero exit — claude may exit non-zero for soft errors
+    echo "$(date -Iseconds) Iteration $iteration done. Log: $log_file"
   fi
 
-  # Check if we've reached the iteration limit
+  # ── Check iteration cap ─────────────────────────────────────────────────
   if [[ "$ITERATIONS" -gt 0 && "$iteration" -ge "$ITERATIONS" ]]; then
-    echo "$(date -Iseconds) Reached $ITERATIONS iterations. Stopping."
+    echo "$(date -Iseconds) Reached $ITERATIONS iteration(s). Stopping."
     break
   fi
 
