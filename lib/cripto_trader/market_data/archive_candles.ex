@@ -244,9 +244,9 @@ defmodule CriptoTrader.MarketData.ArchiveCandles do
   defp validate_download_fun(_), do: {:error, :invalid_download_fun}
 
   defp default_download(url) when is_binary(url) do
-    case Req.get(url: url) do
+    case Req.get(url: url, decode_body: false) do
       {:ok, %{status: status, body: body}} when status in 200..299 ->
-        {:ok, IO.iodata_to_binary(body)}
+        {:ok, body}
 
       {:ok, %{status: 404}} ->
         {:error, :not_found}

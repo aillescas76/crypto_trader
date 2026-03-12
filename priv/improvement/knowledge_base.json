@@ -119,12 +119,12 @@
   },
   {
     "data": {
+      "check_status": "met",
+      "criterion_id": "ac-3",
       "evidence": [
         "One strategy function processed events for 2 symbols in one simulation run",
         "Trade log contains fills for all configured symbols"
-      ],
-      "criterion_id": "ac-3",
-      "check_status": "met"
+      ]
     },
     "details": "A single strategy can run against multiple symbols in simulation.",
     "id": "finding-7",
@@ -136,5 +136,17 @@
     "task_id": 3,
     "timestamp": "2026-02-07T15:23:52Z",
     "title": "ac-3: Requirement appears satisfied"
+  },
+  {
+    "data": {},
+    "details": "Add non-executing advisory mode that evaluates strategy signals and reports buy/sell opportunities without submitting orders; include symbol, side, timestamp, reference price, and rationale metadata.",
+    "id": "finding-8",
+    "tags": [
+      "improvement",
+      "note"
+    ],
+    "task_id": 5,
+    "timestamp": "2026-02-24T21:53:43Z",
+    "title": "Implement signals-only advisory mode for buy/sell recommendations"
   }
 ]

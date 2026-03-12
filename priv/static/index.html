@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cripto Trader — Binance Spot Bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0b0d;
+  --bg2:#111318;
+  --bg3:#181b22;
+  --surface:#1e222a;
+  --border:#2a2f3a;
+  --text:#e4e6eb;
+  --text2:#9ca3af;
+  --accent:#00e599;
+  --accent2:#00c27a;
+  --accent-glow:rgba(0,229,153,.15);
+  --red:#ff4d6a;
+  --amber:#ffb020;
+  --blue:#38bdf8;
+  --font-display:'Outfit',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth;font-size:16px}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-display);
+  line-height:1.7;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent2)}
+
+/* ── Noise overlay ── */
+body::before{
+  content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  background-repeat:repeat;background-size:256px 256px;
+}
+
+/* ── Layout ── */
+.container{max-width:980px;margin:0 auto;padding:0 2rem}
+
+/* ── Hero ── */
+.hero{
+  min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+  position:relative;padding:4rem 0;
+}
+.hero::after{
+  content:'';position:absolute;top:-20%;right:-30%;width:70vw;height:70vw;
+  background:radial-gradient(circle,rgba(0,229,153,.06) 0%,transparent 65%);
+  pointer-events:none;z-index:0;
+}
+.hero-content{position:relative;z-index:1}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:.5rem;
+  padding:.35rem .9rem;border-radius:100px;
+  background:var(--accent-glow);border:1px solid rgba(0,229,153,.2);
+  font-family:var(--font-mono);font-size:.75rem;letter-spacing:.04em;
+  color:var(--accent);margin-bottom:2rem;
+  animation:fade-in .8s ease both;
+}
+.hero-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.hero h1{
+  font-size:clamp(3rem,7vw,5.5rem);font-weight:800;line-height:1.05;
+  letter-spacing:-.03em;margin-bottom:1.5rem;
+  animation:fade-up .8s ease both .1s;
+}
+.hero h1 .accent{color:var(--accent)}
+.hero .subtitle{
+  font-size:1.2rem;color:var(--text2);max-width:520px;font-weight:300;
+  animation:fade-up .8s ease both .25s;
+}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes fade-up{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Nav sticky ── */
+.nav{
+  position:sticky;top:0;z-index:100;
+  background:rgba(10,11,13,.85);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+}
+.nav-inner{
+  display:flex;align-items:center;gap:1rem;padding:.75rem 0;
+  overflow-x:auto;scrollbar-width:none;
+}
+.nav-inner::-webkit-scrollbar{display:none}
+.nav a{
+  color:var(--text2);text-decoration:none;font-size:.82rem;
+  font-weight:500;white-space:nowrap;padding:.35rem .7rem;border-radius:6px;
+  transition:all .2s;
+}
+.nav a:hover,.nav a.active{color:var(--accent);background:var(--accent-glow)}
+.nav-logo{font-weight:700;color:var(--accent)!important;font-size:.9rem;margin-right:auto;background:none!important}
+
+/* ── Sections ── */
+section{padding:5rem 0}
+section+section{border-top:1px solid var(--border)}
+.section-label{
+  font-family:var(--font-mono);font-size:.7rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:.75rem;
+}
+.section-title{
+  font-size:clamp(1.8rem,4vw,2.8rem);font-weight:700;
+  letter-spacing:-.02em;margin-bottom:1rem;line-height:1.15;
+}
+.section-desc{color:var(--text2);max-width:600px;margin-bottom:3rem;font-weight:300}
+
+/* ── Cards grid ── */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem}
+.card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+  padding:1.75rem;transition:all .3s;position:relative;overflow:hidden;
+}
+.card:hover{border-color:rgba(0,229,153,.3);transform:translateY(-2px)}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--accent),transparent);opacity:0;transition:opacity .3s;
+}
+.card:hover::before{opacity:1}
+.card-icon{
+  width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;margin-bottom:1rem;
+}
+.card-icon.green{background:rgba(0,229,153,.1);color:var(--accent)}
+.card-icon.blue{background:rgba(56,189,248,.1);color:var(--blue)}
+.card-icon.amber{background:rgba(255,176,32,.1);color:var(--amber)}
+.card-icon.red{background:rgba(255,77,106,.1);color:var(--red)}
+.card h3{font-size:1.05rem;font-weight:600;margin-bottom:.5rem}
+.card p{color:var(--text2);font-size:.88rem;line-height:1.6}
+
+/* ── Code blocks ── */
+pre{
+  background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  padding:1.25rem 1.5rem;overflow-x:auto;margin:1.25rem 0;
+  font-family:var(--font-mono);font-size:.82rem;line-height:1.7;color:var(--text);
+  position:relative;
+}
+pre .prompt{color:var(--accent);user-select:none}
+pre .flag{color:var(--blue)}
+pre .val{color:var(--amber)}
+pre .comment{color:#555e6e;font-style:italic}
+code{font-family:var(--font-mono);font-size:.85em}
+.inline-code{
+  background:var(--bg3);padding:.15em .45em;border-radius:5px;
+  font-size:.82em;border:1px solid var(--border);
+}
+
+/* ── Steps ── */
+.steps{counter-reset:step;display:flex;flex-direction:column;gap:2rem}
+.step{display:flex;gap:1.5rem;align-items:flex-start}
+.step-num{
+  counter-increment:step;flex-shrink:0;
+  width:36px;height:36px;border-radius:50%;
+  background:var(--accent-glow);border:1.5px solid rgba(0,229,153,.3);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-size:.8rem;font-weight:700;color:var(--accent);
+}
+.step-num::before{content:counter(step)}
+.step-body h3{font-size:1rem;font-weight:600;margin-bottom:.3rem}
+.step-body p{color:var(--text2);font-size:.88rem}
+
+/* ── Table ── */
+.table-wrap{overflow-x:auto;margin:1.5rem 0;border-radius:10px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+thead{background:var(--bg3)}
+th{text-align:left;padding:.75rem 1rem;font-weight:600;color:var(--text2);font-size:.78rem;letter-spacing:.04em;text-transform:uppercase}
+td{padding:.65rem 1rem;border-top:1px solid var(--border);vertical-align:top}
+td:first-child{font-family:var(--font-mono);color:var(--accent);white-space:nowrap;font-size:.82rem}
+tr:hover{background:rgba(0,229,153,.02)}
+
+/* ── Warning box ── */
+.callout{
+  border-radius:10px;padding:1.25rem 1.5rem;margin:1.5rem 0;
+  display:flex;gap:1rem;align-items:flex-start;font-size:.9rem;
+}
+.callout.warn{background:rgba(255,176,32,.06);border:1px solid rgba(255,176,32,.15)}
+.callout.warn .callout-icon{color:var(--amber)}
+.callout.danger{background:rgba(255,77,106,.06);border:1px solid rgba(255,77,106,.15)}
+.callout.danger .callout-icon{color:var(--red)}
+.callout.info{background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.15)}
+.callout.info .callout-icon{color:var(--blue)}
+.callout-icon{font-size:1.2rem;flex-shrink:0;margin-top:2px}
+.callout p{color:var(--text2);line-height:1.6}
+.callout strong{color:var(--text)}
+
+/* ── Diagram / Architecture ── */
+.arch{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+  background:var(--border);border-radius:12px;overflow:hidden;margin:2rem 0;
+}
+.arch-cell{
+  background:var(--bg2);padding:1.5rem;text-align:center;
+  transition:background .3s;
+}
+.arch-cell:hover{background:var(--bg3)}
+.arch-cell .label{
+  font-family:var(--font-mono);font-size:.7rem;color:var(--text2);
+  text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem;
+}
+.arch-cell .name{font-weight:600;font-size:.95rem}
+.arch-cell.span2{grid-column:span 2}
+.arch-cell.span3{grid-column:span 3}
+.arch-arrow{
+  text-align:center;padding:.5rem 0;color:var(--border);font-size:1.5rem;
+}
+
+/* ── Flow / Pipeline ── */
+.pipeline{display:flex;align-items:center;gap:0;margin:2rem 0;flex-wrap:wrap}
+.pipe-node{
+  background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+  padding:.6rem 1rem;font-size:.82rem;font-weight:500;white-space:nowrap;
+}
+.pipe-arrow{color:var(--accent);padding:0 .4rem;font-family:var(--font-mono);font-size:.9rem;flex-shrink:0}
+
+/* ── Footer ── */
+footer{
+  border-top:1px solid var(--border);padding:3rem 0;
+  text-align:center;color:var(--text2);font-size:.82rem;
+}
+footer .logo{color:var(--accent);font-weight:700;font-size:1.1rem;margin-bottom:.5rem}
+
+/* ── Responsive ── */
+@media(max-width:640px){
+  .container{padding:0 1.25rem}
+  section{padding:3rem 0}
+  .arch{grid-template-columns:1fr}
+  .arch-cell.span2,.arch-cell.span3{grid-column:span 1}
+  .pipeline{flex-direction:column;align-items:stretch}
+  .pipe-arrow{transform:rotate(90deg);text-align:center}
+  .pipe-node{text-align:center}
+  .step{flex-direction:column;gap:.75rem}
+}
+
+/* ── Scroll reveal ── */
+.reveal{opacity:0;transform:translateY(24px);transition:all .7s cubic-bezier(.16,1,.3,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HERO ═══════════ -->
+<div class="hero">
+  <div class="container hero-content">
+    <div class="hero-badge">
+      <span></span> Elixir + OTP
+    </div>
+    <h1>Cripto<br><span class="accent">Trader</span></h1>
+    <p class="subtitle">A safety-first Binance spot trading bot. Backtest strategies on historical data, paper trade with zero risk, then go live — all from the same codebase.</p>
+  </div>
+</div>
+
+<!-- ═══════════ NAV ═══════════ -->
+<nav class="nav">
+  <div class="container nav-inner">
+    <a href="#" class="nav-logo">CT</a>
+    <a href="#setup">Setup</a>
+    <a href="#config">Config</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#candles">Candles</a>
+    <a href="#simulation">Simulation</a>
+    <a href="#trading">Trading</a>
+    <a href="#benchmark">Benchmark</a>
+    <a href="#improvement">Improvement</a>
+    <a href="#safety">Safety</a>
+  </div>
+</nav>
+
+<!-- ═══════════ OVERVIEW ═══════════ -->
+<section id="overview">
+  <div class="container">
+    <div class="section-label reveal">Overview</div>
+    <h2 class="section-title reveal">What it does</h2>
+    <p class="section-desc reveal">Cripto Trader is an Elixir/OTP application for algorithmic trading on Binance Spot. It cleanly separates exchange integration, strategy logic, and risk controls into independent modules.</p>
+
+    <div class="cards">
+      <div class="card reveal">
+        <div class="card-icon green">&#9672;</div>
+        <h3>Candle Extraction</h3>
+        <p>Fetch historical klines from the Binance REST API or monthly archive files. Supports CSV and JSON output.</p>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon blue">&#9654;</div>
+        <h3>Simulation Engine</h3>
+        <p>Deterministic replay of historical candles across multiple symbols with a pluggable strategy function.</p>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon amber">&#9670;</div>
+        <h3>Live / Paper Trading</h3>
+        <p>Polling-based trading loop that fetches real-time candles and routes orders through the same pipeline as simulation.</p>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon red">&#9632;</div>
+        <h3>Risk Management</h3>
+        <p>Position sizing limits, max drawdown checks, and circuit breakers. Orders are rejected before they hit Binance if they violate rules.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ SETUP ═══════════ -->
+<section id="setup">
+  <div class="container">
+    <div class="section-label reveal">Getting Started</div>
+    <h2 class="section-title reveal">Setup</h2>
+    <p class="section-desc reveal">Prerequisites: Elixir 1.19+ and a compatible Erlang/OTP release.</p>
+
+    <div class="steps reveal">
+      <div class="step">
+        <div class="step-num"></div>
+        <div class="step-body">
+          <h3>Clone &amp; install dependencies</h3>
+          <pre><span class="prompt">$</span> git clone &lt;repo-url&gt; cripto_trader
+<span class="prompt">$</span> <span class="flag">cd</span> cripto_trader
+<span class="prompt">$</span> mix deps.get</pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num"></div>
+        <div class="step-body">
+          <h3>Create your <code>.env</code> file</h3>
+          <p>The app reads <code class="inline-code">.env</code> in dev/test. It never overwrites variables already set in your shell.</p>
+          <pre><span class="comment"># .env</span>
+BINANCE_API_KEY=<span class="val">"your-key"</span>
+BINANCE_API_SECRET=<span class="val">"your-secret"</span>
+TRADING_MODE=<span class="val">"paper"</span></pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num"></div>
+        <div class="step-body">
+          <h3>Compile &amp; run tests</h3>
+          <pre><span class="prompt">$</span> mix compile
+<span class="prompt">$</span> mix test</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ CONFIG ═══════════ -->
+<section id="config">
+  <div class="container">
+    <div class="section-label reveal">Configuration</div>
+    <h2 class="section-title reveal">Environment Variables</h2>
+    <p class="section-desc reveal">All secrets and runtime knobs are configured via environment variables. Set them in your shell or <code class="inline-code">.env</code> file.</p>
+
+    <div class="table-wrap reveal">
+      <table>
+        <thead><tr><th>Variable</th><th>Description</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td>BINANCE_API_KEY</td><td>Your Binance API key</td><td>—</td></tr>
+          <tr><td>BINANCE_API_SECRET</td><td>Your Binance API secret</td><td>—</td></tr>
+          <tr><td>TRADING_MODE</td><td>Execution mode: <code class="inline-code">paper</code> or <code class="inline-code">live</code></td><td>paper</td></tr>
+          <tr><td>BINANCE_BASE_URL</td><td>Binance API endpoint</td><td>https://api.binance.com</td></tr>
+          <tr><td>BINANCE_RECV_WINDOW</td><td>Request receive window (ms)</td><td>—</td></tr>
+          <tr><td>MAX_ORDER_QUOTE</td><td>Max quote value per order</td><td>—</td></tr>
+          <tr><td>MAX_DRAWDOWN_PCT</td><td>Max drawdown % before circuit breaker</td><td>—</td></tr>
+          <tr><td>CIRCUIT_BREAKER</td><td>Circuit breaker toggle</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ ARCHITECTURE ═══════════ -->
+<section id="architecture">
+  <div class="container">
+    <div class="section-label reveal">System Design</div>
+    <h2 class="section-title reveal">Architecture</h2>
+    <p class="section-desc reveal">Clean separation between exchange integration, strategy logic, risk controls, and execution.</p>
+
+    <div class="arch reveal">
+      <div class="arch-cell span3">
+        <div class="label">CLI Layer</div>
+        <div class="name">Mix Tasks — fetch_candles · simulate · trade · benchmark</div>
+      </div>
+      <div class="arch-cell">
+        <div class="label">Data</div>
+        <div class="name">Binance Client</div>
+      </div>
+      <div class="arch-cell">
+        <div class="label">Strategy</div>
+        <div class="name">Strategy Engine</div>
+      </div>
+      <div class="arch-cell">
+        <div class="label">Execution</div>
+        <div class="name">Order Manager</div>
+      </div>
+      <div class="arch-cell">
+        <div class="label">Market Data</div>
+        <div class="name">Candles · Archive</div>
+      </div>
+      <div class="arch-cell">
+        <div class="label">Risk</div>
+        <div class="name">Position Sizing · Drawdown · Breakers</div>
+      </div>
+      <div class="arch-cell">
+        <div class="label">Paper</div>
+        <div class="name">Paper Orders</div>
+      </div>
+      <div class="arch-cell span3">
+        <div class="label">Engine</div>
+        <div class="name">Simulation Runner · Trading Robot</div>
+      </div>
+    </div>
+
+    <h3 class="reveal" style="margin-top:3rem;margin-bottom:1rem">Order Pipeline</h3>
+    <p class="reveal" style="color:var(--text2);font-size:.9rem;margin-bottom:1rem">Every order — whether from simulation, paper trading, or live — follows the same path:</p>
+
+    <div class="pipeline reveal">
+      <div class="pipe-node">Strategy Signal</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node">Risk Check</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node">Order Manager</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node">Paper / Binance</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ CANDLES ═══════════ -->
+<section id="candles">
+  <div class="container">
+    <div class="section-label reveal">Data Extraction</div>
+    <h2 class="section-title reveal">Fetch Candles</h2>
+    <p class="section-desc reveal">Pull historical kline data from Binance REST API or monthly archive files.</p>
+
+    <h3 class="reveal">REST source</h3>
+    <pre class="reveal"><span class="prompt">$</span> mix binance.fetch_candles \
+    <span class="flag">--symbol</span> <span class="val">BTCUSDT</span> \
+    <span class="flag">--interval</span> <span class="val">15m</span> \
+    <span class="flag">--limit</span> <span class="val">500</span></pre>
+
+    <h3 class="reveal" style="margin-top:2rem">Archive source (bulk historical)</h3>
+    <pre class="reveal"><span class="prompt">$</span> mix binance.fetch_candles \
+    <span class="flag">--source</span> <span class="val">archive</span> \
+    <span class="flag">--symbols</span> <span class="val">BTCUSDT,ETHUSDT</span> \
+    <span class="flag">--interval</span> <span class="val">15m</span> \
+    <span class="flag">--start-time</span> <span class="val">2024-01-01T00:00:00Z</span> \
+    <span class="flag">--end-time</span> <span class="val">2024-03-31T23:59:59Z</span></pre>
+
+    <div class="table-wrap reveal" style="margin-top:2rem">
+      <table>
+        <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>--symbol / --symbols</td><td>One or more trading pairs (repeatable or comma-separated)</td></tr>
+          <tr><td>--source</td><td><code class="inline-code">rest</code> (default) or <code class="inline-code">archive</code></td></tr>
+          <tr><td>--format</td><td><code class="inline-code">json</code> (default) or <code class="inline-code">csv</code></td></tr>
+          <tr><td>--interval</td><td>Candle interval: 1m, 5m, 15m, 1h, etc.</td></tr>
+          <tr><td>--start-time</td><td>Start bound (ISO8601 or Unix ms)</td></tr>
+          <tr><td>--end-time</td><td>End bound (ISO8601 or Unix ms)</td></tr>
+          <tr><td>--limit</td><td>1–1000 candles per request (REST only)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout info reveal">
+      <div class="callout-icon">&#8505;</div>
+      <p><strong>Archive mode</strong> downloads Binance's monthly kline ZIP files and requires both <code class="inline-code">--start-time</code> and <code class="inline-code">--end-time</code>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ SIMULATION ═══════════ -->
+<section id="simulation">
+  <div class="container">
+    <div class="section-label reveal">Backtesting</div>
+    <h2 class="section-title reveal">Simulation</h2>
+    <p class="section-desc reveal">Replay historical candles deterministically to evaluate strategy performance before risking real capital.</p>
+
+    <pre class="reveal"><span class="prompt">$</span> mix binance.simulate \
+    <span class="flag">--source</span> <span class="val">archive</span> \
+    <span class="flag">--symbols</span> <span class="val">BTCUSDT,ETHUSDT</span> \
+    <span class="flag">--interval</span> <span class="val">15m</span> \
+    <span class="flag">--start-time</span> <span class="val">2024-01-01T00:00:00Z</span> \
+    <span class="flag">--end-time</span> <span class="val">2024-03-31T23:59:59Z</span> \
+    <span class="flag">--speed</span> <span class="val">100</span> \
+    <span class="flag">--strategy</span> <span class="val">alternating</span> \
+    <span class="flag">--quantity</span> <span class="val">0.1</span> \
+    <span class="flag">--initial-balance</span> <span class="val">10000</span></pre>
+
+    <div class="table-wrap reveal" style="margin-top:2rem">
+      <table>
+        <thead><tr><th>Flag</th><th>Description</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td>--speed</td><td>Replay acceleration factor</td><td>100</td></tr>
+          <tr><td>--strategy</td><td>Strategy module to use</td><td>alternating</td></tr>
+          <tr><td>--quantity</td><td>Order size per trade</td><td>0.1</td></tr>
+          <tr><td>--initial-balance</td><td>Starting quote balance</td><td>10000</td></tr>
+          <tr><td>--mode</td><td><code class="inline-code">paper</code> or <code class="inline-code">live</code></td><td>paper</td></tr>
+          <tr><td>--include-equity-curve</td><td>Include per-event equity points</td><td>off</td></tr>
+          <tr><td>--log-strategy-decisions</td><td>Enable debug decision logs</td><td>off</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="reveal" style="margin-top:2.5rem">Output</h3>
+    <p class="reveal" style="color:var(--text2);font-size:.9rem;margin-bottom:1rem">JSON payload with run metadata and result containing:</p>
+    <div class="cards reveal" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+      <div class="card" style="padding:1.25rem">
+        <h3 style="font-family:var(--font-mono);font-size:.82rem;color:var(--accent)">pnl</h3>
+        <p>Profit and loss</p>
+      </div>
+      <div class="card" style="padding:1.25rem">
+        <h3 style="font-family:var(--font-mono);font-size:.82rem;color:var(--accent)">win_rate</h3>
+        <p>Winning trade %</p>
+      </div>
+      <div class="card" style="padding:1.25rem">
+        <h3 style="font-family:var(--font-mono);font-size:.82rem;color:var(--accent)">max_drawdown_pct</h3>
+        <p>Peak-to-trough decline</p>
+      </div>
+      <div class="card" style="padding:1.25rem">
+        <h3 style="font-family:var(--font-mono);font-size:.82rem;color:var(--accent)">trades</h3>
+        <p>Total order count</p>
+      </div>
+      <div class="card" style="padding:1.25rem">
+        <h3 style="font-family:var(--font-mono);font-size:.82rem;color:var(--accent)">trade_log</h3>
+        <p>Full order history</p>
+      </div>
+      <div class="card" style="padding:1.25rem">
+        <h3 style="font-family:var(--font-mono);font-size:.82rem;color:var(--accent)">equity_curve</h3>
+        <p>Balance over time</p>
+      </div>
+    </div>
+
+    <h3 class="reveal" style="margin-top:2.5rem">Programmatic API</h3>
+    <pre class="reveal">CriptoTrader.Simulation.Runner.run(
+  <span class="flag">symbols:</span> <span class="val">["BTCUSDT", "ETHUSDT"]</span>,
+  <span class="flag">interval:</span> <span class="val">"15m"</span>,
+  <span class="flag">candles_by_symbol:</span> candles,
+  <span class="flag">strategy_fun:</span> <span class="val">fn</span> event, state ->
+    orders = my_strategy(event)
+    {orders, state}
+  <span class="val">end</span>
+)</pre>
+  </div>
+</section>
+
+<!-- ═══════════ TRADING ═══════════ -->
+<section id="trading">
+  <div class="container">
+    <div class="section-label reveal">Live Execution</div>
+    <h2 class="section-title reveal">Trading Robot</h2>
+    <p class="section-desc reveal">A polling loop that fetches live candles and routes strategy orders through the full pipeline. Same strategy function used in simulation.</p>
+
+    <pre class="reveal"><span class="prompt">$</span> mix binance.trade \
+    <span class="flag">--symbols</span> <span class="val">BTCUSDT,ETHUSDT</span> \
+    <span class="flag">--interval</span> <span class="val">1m</span> \
+    <span class="flag">--iterations</span> <span class="val">5</span> \
+    <span class="flag">--strategy</span> <span class="val">alternating</span> \
+    <span class="flag">--quantity</span> <span class="val">0.1</span> \
+    <span class="flag">--mode</span> <span class="val">paper</span></pre>
+
+    <div class="table-wrap reveal" style="margin-top:2rem">
+      <table>
+        <thead><tr><th>Flag</th><th>Description</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td>--iterations</td><td>Number of polling cycles</td><td>1</td></tr>
+          <tr><td>--poll-ms</td><td>Sleep between iterations (ms)</td><td>0</td></tr>
+          <tr><td>--limit</td><td>Candles fetched per symbol per cycle</td><td>1</td></tr>
+          <tr><td>--mode</td><td><code class="inline-code">paper</code> or <code class="inline-code">live</code></td><td>paper</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout danger reveal">
+      <div class="callout-icon">&#9888;</div>
+      <p><strong>Live mode submits real orders to Binance.</strong> Always validate your strategy in paper mode first. The bot defaults to <code class="inline-code">paper</code> to prevent accidental live trades.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ BENCHMARK ═══════════ -->
+<section id="benchmark">
+  <div class="container">
+    <div class="section-label reveal">Performance</div>
+    <h2 class="section-title reveal">Simulation Benchmark</h2>
+    <p class="section-desc reveal">Deterministic throughput benchmark: 3 symbols × 90 days × 15m candles. Must complete under 5 minutes.</p>
+
+    <pre class="reveal"><span class="prompt">$</span> mix binance.simulation_benchmark</pre>
+
+    <div class="table-wrap reveal" style="margin-top:1.5rem">
+      <table>
+        <thead><tr><th>Flag</th><th>Description</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td>--symbols</td><td>Benchmark symbols</td><td>BTCUSDT,ETHUSDT,SOLUSDT</td></tr>
+          <tr><td>--days</td><td>Lookback period</td><td>90</td></tr>
+          <tr><td>--max-seconds</td><td>Pass/fail threshold</td><td>300</td></tr>
+          <tr><td>--speed</td><td>Replay speed factor</td><td>100</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="reveal" style="color:var(--text2);font-size:.88rem;margin-top:1rem">Outputs JSON with elapsed time, threshold, pass/fail, event count, and simulation summary. Exits with an error if runtime exceeds the threshold.</p>
+  </div>
+</section>
+
+<!-- ═══════════ IMPROVEMENT ═══════════ -->
+<section id="improvement">
+  <div class="container">
+    <div class="section-label reveal">Self-Improving</div>
+    <h2 class="section-title reveal">Improvement Loop</h2>
+    <p class="section-desc reveal">A file-backed autonomous loop that identifies requirement gaps and optionally invokes an AI agent (Codex) to implement fixes.</p>
+
+    <h3 class="reveal">Core Commands</h3>
+    <pre class="reveal"><span class="comment"># Seed tasks from requirements</span>
+<span class="prompt">$</span> mix improvement.tasks.seed_requirements
+
+<span class="comment"># Manage tasks</span>
+<span class="prompt">$</span> mix improvement.task.list
+<span class="prompt">$</span> mix improvement.task.new <span class="flag">--title</span> <span class="val">"Investigate X"</span> <span class="flag">--type</span> <span class="val">note</span>
+<span class="prompt">$</span> mix improvement.task.update <span class="flag">--id</span> <span class="val">1</span> <span class="flag">--status</span> <span class="val">in_progress</span>
+
+<span class="comment"># Run the loop</span>
+<span class="prompt">$</span> mix improvement.loop.run <span class="flag">--max</span> <span class="val">5</span>
+
+<span class="comment"># Check budget &amp; findings</span>
+<span class="prompt">$</span> mix improvement.budget.status
+<span class="prompt">$</span> mix improvement.findings.list <span class="flag">--limit</span> <span class="val">20</span>
+
+<span class="comment"># Record architecture decisions</span>
+<span class="prompt">$</span> mix improvement.decision.new <span class="flag">--title</span> <span class="val">"Choose event model"</span></pre>
+
+    <h3 class="reveal" style="margin-top:2.5rem">Autonomous Mode</h3>
+    <p class="reveal" style="color:var(--text2);font-size:.9rem;margin-bottom:1rem">Run unattended iterations with AI-powered implementation:</p>
+    <pre class="reveal"><span class="prompt">$</span> mix improvement.loop.autorun \
+    <span class="flag">--iterations</span> <span class="val">100</span> \
+    <span class="flag">--sleep-ms</span> <span class="val">300</span> \
+    <span class="flag">--max-tasks</span> <span class="val">10</span> \
+    <span class="flag">--codex-enabled</span></pre>
+
+    <div class="callout info reveal">
+      <div class="callout-icon">&#8505;</div>
+      <p><strong>Budget controls:</strong> Execution is capped at 5 hours/week (18,000 seconds). Override with <code class="inline-code">IMPROVEMENT_WEEKLY_BUDGET_SECONDS</code>. The loop pauses automatically when exhausted and resumes after the weekly reset.</p>
+    </div>
+
+    <h3 class="reveal" style="margin-top:2rem">Artifacts</h3>
+    <div class="cards reveal" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+      <div class="card" style="padding:1.25rem">
+        <h3 style="font-family:var(--font-mono);font-size:.78rem;color:var(--amber)">tasks.json</h3>
+        <p>Task queue</p>
+      </div>
+      <div class="card" style="padding:1.25rem">
+        <h3 style="font-family:var(--font-mono);font-size:.78rem;color:var(--amber)">knowledge_base.json</h3>
+        <p>Findings &amp; evidence</p>
+      </div>
+      <div class="card" style="padding:1.25rem">
+        <h3 style="font-family:var(--font-mono);font-size:.78rem;color:var(--amber)">progress_report.json</h3>
+        <p>Coverage &amp; progress</p>
+      </div>
+      <div class="card" style="padding:1.25rem">
+        <h3 style="font-family:var(--font-mono);font-size:.78rem;color:var(--amber)">execution_budget.json</h3>
+        <p>Budget tracking</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ OBSERVABILITY ═══════════ -->
+<section id="observability">
+  <div class="container">
+    <div class="section-label reveal">Monitoring</div>
+    <h2 class="section-title reveal">Observability</h2>
+    <p class="section-desc reveal">Structured log events emitted at key execution points.</p>
+
+    <div class="table-wrap reveal">
+      <table>
+        <thead><tr><th>Event</th><th>Source</th><th>When</th></tr></thead>
+        <tbody>
+          <tr><td>simulation_event</td><td>Simulation.Runner</td><td>Strategy decision during replay (opt-in)</td></tr>
+          <tr><td>trading_event</td><td>Trading.Robot</td><td>Each processed live/paper candle</td></tr>
+          <tr><td>order_submitted</td><td>OrderManager</td><td>Order accepted and sent</td></tr>
+          <tr><td>order_rejected</td><td>OrderManager</td><td>Risk violation, invalid mode, or execution failure</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="reveal" style="color:var(--text2);font-size:.88rem;margin-top:1rem">Each event includes symbol, side, mode, quantity, price, and rejection reason when applicable.</p>
+  </div>
+</section>
+
+<!-- ═══════════ SAFETY ═══════════ -->
+<section id="safety">
+  <div class="container">
+    <div class="section-label reveal">Risk Controls</div>
+    <h2 class="section-title reveal">Safety</h2>
+    <p class="section-desc reveal">Trading is inherently risky. This project includes multiple layers of protection, but nothing replaces caution.</p>
+
+    <div class="cards reveal">
+      <div class="card">
+        <div class="card-icon green">&#10003;</div>
+        <h3>Paper by Default</h3>
+        <p>All commands default to <code class="inline-code">paper</code> mode. You must explicitly opt into <code class="inline-code">live</code>.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon amber">&#10003;</div>
+        <h3>Max Order Size</h3>
+        <p>Configure <code class="inline-code">MAX_ORDER_QUOTE</code> to cap the quote value of any single order.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon red">&#10003;</div>
+        <h3>Drawdown Breaker</h3>
+        <p>Set <code class="inline-code">MAX_DRAWDOWN_PCT</code> to halt trading when equity drops beyond your threshold.</p>
+      </div>
+    </div>
+
+    <div class="callout warn reveal" style="margin-top:2rem">
+      <div class="callout-icon">&#9888;</div>
+      <p><strong>Always test in paper mode before using real funds.</strong> Review strategy performance in simulation across multiple market conditions. No software can guarantee profits.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ FOOTER ═══════════ -->
+<footer>
+  <div class="container">
+    <div class="logo">Cripto Trader</div>
+    <p>Elixir/OTP · Binance Spot · v0.1.0</p>
+  </div>
+</footer>
+
+<script>
+// Scroll reveal
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }});
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+// Active nav highlight
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.nav a:not(.nav-logo)');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => { if (window.scrollY >= s.offsetTop - 120) current = s.id; });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+});
+</script>
+</body>
+</html>

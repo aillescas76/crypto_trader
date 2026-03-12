@@ -3,7 +3,7 @@ defmodule Mix.Tasks.Binance.Simulate do
 
   alias CriptoTrader.MarketData.{ArchiveCandles, Candles}
   alias CriptoTrader.Simulation.Runner
-  alias CriptoTrader.Strategy.Alternating
+  alias CriptoTrader.Strategy.{Alternating, BbRsiReversion, CycleAth, CycleAthConfirm, CycleDca, IntradayMomentum}
 
   @shortdoc "Run a Binance Spot simulation from historical candles"
   @default_speed 100
@@ -29,6 +29,9 @@ defmodule Mix.Tasks.Binance.Simulate do
           limit: :integer,
           strategy: :string,
           quantity: :string,
+          quote_per_trade: :string,
+          stop_loss_pct: :string,
+          trail_pct: :string,
           initial_balance: :string,
           include_equity_curve: :boolean,
           log_strategy_decisions: :boolean
@@ -50,6 +53,24 @@ defmodule Mix.Tasks.Binance.Simulate do
     mode = parse_mode!(Keyword.get(opts, :mode, "paper"))
     quantity = parse_positive_number!(Keyword.get(opts, :quantity, @default_quantity), :quantity)
 
+    quote_per_trade =
+      parse_positive_number!(
+        Keyword.get(opts, :quote_per_trade, "100.0"),
+        :quote_per_trade
+      )
+
+    stop_loss_pct =
+      parse_positive_number!(
+        Keyword.get(opts, :stop_loss_pct, "0.02"),
+        :stop_loss_pct
+      )
+
+    trail_pct =
+      parse_positive_number!(
+        Keyword.get(opts, :trail_pct, "0.003"),
+        :trail_pct
+      )
+
     initial_balance =
       parse_positive_number!(
         Keyword.get(opts, :initial_balance, @default_initial_balance),
@@ -63,7 +84,14 @@ defmodule Mix.Tasks.Binance.Simulate do
     fetch_opts = fetch_opts!(source, symbols, interval, start_time, end_time, opts)
     fetch_fun = candles_fetch_fun(source)
     runner_fun = simulation_runner_fun()
-    {strategy_fun, strategy_state} = strategy_config(strategy, symbols, quantity)
+
+    {strategy_fun, strategy_state} =
+      strategy_config(strategy, symbols, %{
+        quantity: quantity,
+        quote_per_trade: quote_per_trade,
+        stop_loss_pct: stop_loss_pct,
+        trail_pct: trail_pct
+      })
 
     case fetch_fun.(fetch_opts) do
       {:ok, candles_by_symbol} ->
@@ -93,7 +121,7 @@ defmodule Mix.Tasks.Binance.Simulate do
               mode: output_mode(mode),
               log_strategy_decisions: log_strategy_decisions,
               initial_balance: initial_balance,
-              result: result
+              result: json_safe(result)
             }
 
             Mix.shell().info(Jason.encode!(payload, pretty: true))
@@ -258,14 +286,50 @@ defmodule Mix.Tasks.Binance.Simulate do
   defp parse_strategy!(strategy) when is_binary(strategy) do
     case strategy |> String.trim() |> String.downcase() do
       "alternating" -> :alternating
-      _ -> Mix.raise("Invalid --strategy. Accepted values: alternating")
+      "intraday_momentum" -> :intraday_momentum
+      "bb_rsi_reversion" -> :bb_rsi_reversion
+      "cycle_ath" -> :cycle_ath
+      "cycle_ath_confirm" -> :cycle_ath_confirm
+      "cycle_dca" -> :cycle_dca
+      _ -> Mix.raise("Invalid --strategy. Accepted values: alternating, intraday_momentum, bb_rsi_reversion, cycle_ath, cycle_ath_confirm, cycle_dca")
     end
   end
 
-  defp parse_strategy!(_), do: Mix.raise("Invalid --strategy. Accepted values: alternating")
+  defp parse_strategy!(_),
+    do: Mix.raise("Invalid --strategy. Accepted values: alternating, intraday_momentum, bb_rsi_reversion, cycle_ath, cycle_ath_confirm, cycle_dca")
 
-  defp strategy_config(:alternating, symbols, quantity) do
+  defp strategy_config(:alternating, symbols, %{quantity: quantity}) do
     {&Alternating.signal/2, Alternating.new_state(symbols, quantity)}
+  end
+
+  defp strategy_config(:bb_rsi_reversion, symbols, %{quote_per_trade: quote_per_trade}) do
+    {&BbRsiReversion.signal/2,
+     BbRsiReversion.new_state(symbols, quote_per_trade: quote_per_trade)}
+  end
+
+  defp strategy_config(:cycle_ath, symbols, %{quote_per_trade: quote_per_trade, trail_pct: trail_pct}) do
+    {&CycleAth.signal/2, CycleAth.new_state(symbols, quote_per_trade: quote_per_trade, trail_pct: trail_pct)}
+  end
+
+  defp strategy_config(:cycle_ath_confirm, symbols, %{quote_per_trade: quote_per_trade, trail_pct: trail_pct}) do
+    {&CycleAthConfirm.signal/2, CycleAthConfirm.new_state(symbols, quote_per_trade: quote_per_trade, trail_pct: trail_pct)}
+  end
+
+  defp strategy_config(:cycle_dca, symbols, %{quote_per_trade: quote_per_trade, trail_pct: trail_pct}) do
+    {&CycleDca.signal/2, CycleDca.new_state(symbols, quote_per_trade: quote_per_trade, trail_pct: trail_pct)}
+  end
+
+  defp strategy_config(:intraday_momentum, symbols, %{
+         quote_per_trade: quote_per_trade,
+         stop_loss_pct: stop_loss_pct,
+         trail_pct: trail_pct
+       }) do
+    {&IntradayMomentum.signal/2,
+     IntradayMomentum.new_state(symbols,
+       quote_per_trade: quote_per_trade,
+       stop_loss_pct: stop_loss_pct,
+       trail_pct: trail_pct
+     )}
   end
 
   defp candles_fetch_fun(:rest) do
@@ -300,6 +364,8 @@ defmodule Mix.Tasks.Binance.Simulate do
   defp output_source(:rest), do: "binance_spot_rest"
   defp output_source(:archive), do: "binance_spot_archive"
   defp output_strategy(:alternating), do: "alternating"
+  defp output_strategy(:bb_rsi_reversion), do: "bb_rsi_reversion"
+  defp output_strategy(:intraday_momentum), do: "intraday_momentum"
   defp output_mode(:paper), do: "paper"
   defp output_mode(:live), do: "live"
 
@@ -308,4 +374,12 @@ defmodule Mix.Tasks.Binance.Simulate do
       Mix.Task.run("app.start")
     end
   end
+
+  defp json_safe(map) when is_map(map) do
+    Map.new(map, fn {k, v} -> {k, json_safe(v)} end)
+  end
+
+  defp json_safe(list) when is_list(list), do: Enum.map(list, &json_safe/1)
+  defp json_safe(tuple) when is_tuple(tuple), do: inspect(tuple)
+  defp json_safe(other), do: other
 end
