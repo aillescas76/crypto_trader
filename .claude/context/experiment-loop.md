@@ -1,6 +1,6 @@
 # Experiment Loop — Quick Reference
 
-Read this at the start of every `/loop` iteration alongside `priv/experiments/`.
+Read this at the start of every `/experiment-loop` iteration alongside `priv/experiments/`.
 
 ---
 

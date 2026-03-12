@@ -61,7 +61,7 @@ If a tool call is denied by the hook, do not attempt to work around it. Adjust t
 
 ## Experiment Loop
 
-Claude Code runs an autonomous strategy research and backtesting loop using the `/loop` skill.
+Claude Code runs an autonomous strategy research and backtesting loop using the `/experiment-loop` skill.
 
 ### Scientific Rigor
 - **No data snooping.** Parameters must be fixed before running. Never tune parameters on validation data (2025-01-01+).

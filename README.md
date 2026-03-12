@@ -245,7 +245,7 @@ Pages:
 ### Run the loop (in Claude Code)
 
 ```
-/loop
+/experiment-loop
 ```
 
 Claude Code will: read current status → extract learnings → research new ideas → write a strategy → queue and run experiments → record findings.
@@ -256,7 +256,7 @@ Claude Code will: read current status → extract learnings → research new ide
 ./scripts/run_experiment_loop.sh
 ```
 
-Runs forever: each iteration invokes `claude --print /loop`, sleeps between iterations, and automatically waits out API usage limits.
+Runs forever: each iteration invokes `claude --print /experiment-loop`, sleeps between iterations, and automatically waits out API usage limits.
 
 Options:
 - `--iterations N` — stop after N iterations (default: run forever)

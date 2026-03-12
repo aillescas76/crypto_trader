@@ -184,7 +184,7 @@ while true; do
     --print
   )
   [[ -n "$MAX_BUDGET_USD" ]] && claude_cmd+=(--max-budget-usd "$MAX_BUDGET_USD")
-  claude_cmd+=("/loop")
+  claude_cmd+=("/experiment-loop")
 
   # Run, capture output and exit code
   set +e

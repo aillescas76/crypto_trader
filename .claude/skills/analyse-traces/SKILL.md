@@ -62,7 +62,7 @@ def load_jsonl(path):
     return records
 
 def is_experiment_session(records):
-    """True if session contains mix experiments.* commands or /loop skill."""
+    """True if session contains mix experiments.* commands or /experiment-loop skill."""
     for r in records:
         if r.get("type") == "assistant":
             for block in r.get("message", {}).get("content", []):

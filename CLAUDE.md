@@ -24,7 +24,7 @@ lib/cripto_trader_web/live/experiments_live/  ← Feed, Findings, Feedback LiveV
 
 priv/experiments/       ← JSON state (git-tracked, no DB)
 
-.claude/skills/         ← skill protocols (/loop, /analyse-traces)
+.claude/skills/         ← skill protocols (/experiment-loop, /analyse-traces)
 .claude/context/        ← per-skill quick-reference (APIs, constants, examples)
 ```
 
@@ -70,5 +70,5 @@ Web/PubSub/Engine children are gated off in `MIX_ENV=test`.
 
 | Skill | Purpose | Context file |
 |-------|---------|--------------|
-| `/loop` | Autonomous strategy experiment iteration | `.claude/context/experiment-loop.md` |
+| `/experiment-loop` | Autonomous strategy experiment iteration | `.claude/context/experiment-loop.md` |
 | `/analyse-traces` | Review experiment session traces for process improvements | `.claude/skills/analyse-traces/SKILL.md` |
