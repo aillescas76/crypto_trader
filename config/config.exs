@@ -24,6 +24,7 @@ config :cripto_trader, CriptoTraderWeb.Endpoint,
     System.get_env("SECRET_KEY_BASE") ||
       "ExperimentLoopDevKeyNotForProd00000000000000000000000000000000000000",
   pubsub_server: CriptoTrader.PubSub,
-  live_view: [signing_salt: "xp_loop_salt"]
+  live_view: [signing_salt: "xp_loop_salt"],
+  render_errors: [formats: [html: CriptoTraderWeb.ErrorHTML], layout: false]
 
 config :phoenix, :json_library, Jason
