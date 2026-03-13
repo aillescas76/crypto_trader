@@ -37,15 +37,19 @@ defmodule CriptoTrader.CandleDB do
     if rows == [] do
       {:ok, 0}
     else
-      {count, _} =
-        Repo.insert_all(
-          Candle,
-          rows,
-          on_conflict: {:replace_all_except, [:id, :inserted_at]},
-          conflict_target: [:symbol, :interval, :open_time]
-        )
+      try do
+        {count, _} =
+          Repo.insert_all(
+            Candle,
+            rows,
+            on_conflict: {:replace_all_except, [:id, :inserted_at]},
+            conflict_target: [:symbol, :interval, :open_time]
+          )
 
-      {:ok, count}
+        {:ok, count}
+      rescue
+        e -> {:error, Exception.message(e)}
+      end
     end
   end
 
