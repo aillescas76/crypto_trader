@@ -29,7 +29,11 @@ defmodule CriptoTrader.MixProject do
       {:phoenix_live_view, "~> 1.0"},
       {:phoenix_html, "~> 4.0"},
       {:phoenix_pubsub, "~> 2.1"},
-      {:plug_cowboy, "~> 2.7"}
+      {:plug_cowboy, "~> 2.7"},
+      {:websockex, "~> 0.4"},
+      {:ecto_sqlite3, "~> 0.17"},
+      {:ecto_sql, "~> 3.12"},
+      {:ecto, "~> 3.12"}
     ]
   end
 end

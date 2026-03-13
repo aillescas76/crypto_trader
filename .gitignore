@@ -33,3 +33,11 @@ cripto_trader-*.tar
 
 # Git worktrees
 /.worktrees/
+
+# Candle history database (runtime artifacts — not committed)
+/priv/repo/candles.db
+/priv/repo/candles.db-shm
+/priv/repo/candles.db-wal
+/priv/repo/test_candles.db
+/priv/repo/test_candles.db-shm
+/priv/repo/test_candles.db-wal

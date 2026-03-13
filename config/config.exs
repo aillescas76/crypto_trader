@@ -28,3 +28,11 @@ config :cripto_trader, CriptoTraderWeb.Endpoint,
   render_errors: [formats: [html: CriptoTraderWeb.ErrorHTML], layout: false]
 
 config :phoenix, :json_library, Jason
+
+config :cripto_trader, CriptoTrader.CandleDB.Repo,
+  database: Path.expand("../priv/repo/candles.db", __DIR__),
+  pool_size: 5
+
+if File.exists?(Path.expand("#{config_env()}.exs", __DIR__)) do
+  import_config "#{config_env()}.exs"
+end
