@@ -124,6 +124,17 @@ defmodule CriptoTrader.Strategy.RegimeDetectorTest do
   # Force a specific ADX value directly into state.
   # Smooth values are derived so that a flat candle at 100.0 keeps DX = adx,
   # making ADX stable on the next candle.
+  # Pre-seed IntradayMomentum best_hours so it trades without needing 10 days of history
+  defp set_momentum_hours(state, symbol, buy_hour, sell_hour) do
+    history = List.duplicate({buy_hour, sell_hour}, 10)
+    new_momentum =
+      state.momentum_state
+      |> put_in([:day_history, symbol], history)
+      |> put_in([:best_hours, symbol], {buy_hour, sell_hour})
+
+    %{state | momentum_state: new_momentum}
+  end
+
   defp set_adx(state, symbol, adx) do
     # With smooth_tr=10, we need +DI and -DI such that DX = adx.
     # Choose +DI = 0.5 + adx/200, -DI = 0.5 - adx/200 → DX = adx exactly.
@@ -160,6 +171,7 @@ defmodule CriptoTrader.Strategy.RegimeDetectorTest do
         )
 
       state = set_adx(state, "BTCUSDC", 35.0)
+      state = set_momentum_hours(state, "BTCUSDC", 19, 21)
 
       # 19:00 UTC = hour 19 → open_time covers that hour
       buy_window_ts = 19 * 3_600_000
