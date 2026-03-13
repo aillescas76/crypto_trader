@@ -7,7 +7,19 @@ Read this at the start of every `/experiment-loop` iteration alongside `priv/exp
 ## Mix Task Cheatsheet
 
 ```bash
-mix experiments.status                          # overview table
+# Read full context (session + experiments + findings + feedback)
+mix experiments.context
+
+# Session lifecycle
+mix experiments.session announce --step 4 [--hypothesis-name X --hypothesis-category Y --hypothesis-description Z]
+mix experiments.session checkpoint --step 4
+mix experiments.session complete
+
+# Step research data (persists to UI at /session)
+mix experiments.session.data --step 4 --file /tmp/data.md   # save
+mix experiments.session.data --step 4                        # read
+
+# Experiments
 mix experiments.add \
   --strategy CriptoTrader.Strategy.Experiment.YYYYMMDD<Name> \
   --hypothesis "..." \
@@ -15,10 +27,13 @@ mix experiments.add \
   --interval 15m --balance 10000
 mix experiments.run --all-pending              # run all queued
 mix experiments.run --id exp-001               # run one
+
+# Findings and feedback
 mix experiments.findings.add \
   --title "StrategyName: insight" \
   --experiment exp-001 \
   --tags tag1,tag2
+mix experiments.feedback.acknowledge --id fbk-001
 ```
 
 ---
