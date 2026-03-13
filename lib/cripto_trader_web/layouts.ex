@@ -37,6 +37,17 @@ defmodule CriptoTraderWeb.Layouts do
           .tag { background: #21262d; color: #8b949e; padding: 2px 8px; border-radius: 3px; font-size: 0.85em; margin-right: 4px; }
           .feedback-entry { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 12px; margin-bottom: 8px; }
           .ack { opacity: 0.5; }
+          .session-panel { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 12px 16px; margin-bottom: 20px; }
+          .session-in_progress { border-color: #388bfd; }
+          .session-completed { border-color: #3fb950; }
+          .session-header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+          .session-badge { font-weight: bold; font-size: 0.85em; }
+          .session-badge-in_progress { color: #388bfd; }
+          .session-badge-completed { color: #3fb950; }
+          .session-badge-idle { color: #8b949e; }
+          .session-step { color: #c9d1d9; font-size: 0.9em; }
+          .session-progress { color: #8b949e; font-size: 0.8em; letter-spacing: 0.05em; margin-left: auto; }
+          .session-hypothesis { margin-top: 10px; font-size: 0.9em; line-height: 1.5; }
         </style>
       </head>
       <body>
@@ -44,6 +55,9 @@ defmodule CriptoTraderWeb.Layouts do
           <a href="/">Feed</a>
           <a href="/findings">Findings</a>
           <a href="/feedback">Feedback</a>
+          <a href="/session">Session</a>
+          <a href="/investigations">Investigations</a>
+          <a href="/live-sim">Live Sim</a>
         </nav>
         <main>
           <%= @inner_content %>
