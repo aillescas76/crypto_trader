@@ -43,13 +43,15 @@ defmodule CriptoTrader.CandleDBTest do
     end
 
     test "upsert updates non-key fields but preserves inserted_at" do
-      c = candle(5, %{close: "50000.0"})
-      CandleDB.insert_candles([c])
-      [row] = CandleDB.range("BTCUSDC", "1h", ts(6), ts(4))
+      fixed_time = 1_718_409_600_000
+      c1 = Map.merge(@base, %{open_time: fixed_time, close: "50000.0"})
+      c2 = Map.merge(@base, %{open_time: fixed_time, close: "99999.0"})
+      CandleDB.insert_candles([c1])
+      [row] = CandleDB.range("BTCUSDC", "1h", 0, fixed_time + 1)
       original_inserted_at = row.inserted_at
 
-      CandleDB.insert_candles([candle(5, %{close: "99999.0"})])
-      [row2] = CandleDB.range("BTCUSDC", "1h", ts(6), ts(4))
+      CandleDB.insert_candles([c2])
+      [row2] = CandleDB.range("BTCUSDC", "1h", 0, fixed_time + 1)
       assert Decimal.equal?(row2.close, Decimal.new("99999.0"))
       assert row2.inserted_at == original_inserted_at
     end
