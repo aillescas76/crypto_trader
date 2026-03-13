@@ -12,14 +12,16 @@ defmodule Mix.Tasks.Experiments.Findings.Add do
       mix experiments.findings.add \\
         --title "Finding title" \\
         --experiment EXP_ID \\
-        [--tags tag1,tag2]
+        [--tags tag1,tag2] \\
+        [--body "Multi-line analysis text"] \\
+        [--file /path/to/body.md]
   """
 
   @impl Mix.Task
   def run(args) do
     {opts, _argv, invalid} =
       OptionParser.parse(args,
-        switches: [title: :string, experiment: :string, tags: :string]
+        switches: [title: :string, experiment: :string, tags: :string, body: :string, file: :string]
       )
 
     if invalid != [] do
@@ -36,13 +38,26 @@ defmodule Mix.Tasks.Experiments.Findings.Add do
       |> Enum.map(&String.trim/1)
       |> Enum.reject(&(&1 == ""))
 
+    body =
+      cond do
+        file = Keyword.get(opts, :file) ->
+          case File.read(file) do
+            {:ok, content} -> content
+            {:error, reason} -> Mix.raise("Cannot read --file #{file}: #{inspect(reason)}")
+          end
+
+        inline = Keyword.get(opts, :body) ->
+          inline
+
+        true ->
+          nil
+      end
+
     Mix.Task.run("app.start", [])
 
-    finding = %{
-      "title" => title,
-      "experiment_id" => experiment_id,
-      "tags" => tags
-    }
+    finding =
+      %{"title" => title, "experiment_id" => experiment_id, "tags" => tags}
+      |> then(fn f -> if body, do: Map.put(f, "body", body), else: f end)
 
     case State.add_finding(finding) do
       {:ok, id} ->

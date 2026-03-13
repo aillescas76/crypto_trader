@@ -4,6 +4,15 @@ defmodule CriptoTrader.Experiments.State do
   alias CriptoTrader.Experiments.Config
   alias CriptoTrader.Improvement.Storage
 
+  @spec read_session() :: map()
+  def read_session do
+    case Storage.read_json(Config.session_file(), nil) do
+      {:ok, nil} -> %{}
+      {:ok, session} when is_map(session) -> session
+      _ -> %{}
+    end
+  end
+
   @spec list_experiments() :: {:ok, [map()]} | {:error, term()}
   def list_experiments do
     Storage.read_json(Config.experiments_file(), [])
@@ -57,6 +66,27 @@ defmodule CriptoTrader.Experiments.State do
     end
   end
 
+  @spec list_principles() :: {:ok, [map()]} | {:error, term()}
+  def list_principles do
+    Storage.read_json(Config.principles_file(), [])
+  end
+
+  @spec add_principle(map()) :: {:ok, String.t()} | {:error, term()}
+  def add_principle(principle) do
+    with {:ok, principles} <- list_principles() do
+      id = Map.get(principle, "id") || Map.get(principle, :id) || generate_id("prn")
+
+      entry =
+        principle
+        |> Map.put("id", id)
+        |> Map.put_new("added_at", iso_now())
+        |> stringify_keys()
+
+      :ok = Storage.write_json(Config.principles_file(), principles ++ [entry])
+      {:ok, id}
+    end
+  end
+
   @spec list_feedback() :: {:ok, [map()]} | {:error, term()}
   def list_feedback do
     Storage.read_json(Config.feedback_file(), [])
@@ -76,6 +106,165 @@ defmodule CriptoTrader.Experiments.State do
 
       :ok = Storage.write_json(Config.feedback_file(), all_feedback ++ [entry])
       {:ok, id}
+    end
+  end
+
+  @spec list_investigations() :: {:ok, [map()]} | {:error, term()}
+  def list_investigations do
+    Storage.read_json(Config.investigations_file(), [])
+  end
+
+  @spec add_investigation(map()) :: {:ok, String.t()} | {:error, term()}
+  def add_investigation(inv) do
+    with {:ok, investigations} <- list_investigations() do
+      id = Map.get(inv, "id") || Map.get(inv, :id) || generate_id("inv")
+      now = iso_now()
+
+      entry =
+        inv
+        |> Map.put("id", id)
+        |> Map.put_new("status", "active")
+        |> Map.put_new("experiments", [])
+        |> Map.put_new("discard_reason", nil)
+        |> Map.put_new("created_at", now)
+        |> Map.put("updated_at", now)
+        |> stringify_keys()
+
+      :ok = Storage.write_json(Config.investigations_file(), investigations ++ [entry])
+      {:ok, id}
+    end
+  end
+
+  @spec discard_investigation(String.t(), String.t()) :: :ok | {:error, term()}
+  def discard_investigation(id, reason) do
+    with {:ok, investigations} <- list_investigations() do
+      updated =
+        Enum.map(investigations, fn inv ->
+          if Map.get(inv, "id") == id do
+            inv
+            |> Map.put("status", "discarded")
+            |> Map.put("discard_reason", reason)
+            |> Map.put("updated_at", iso_now())
+          else
+            inv
+          end
+        end)
+
+      Storage.write_json(Config.investigations_file(), updated)
+    end
+  end
+
+  @spec freeze_investigation(String.t()) :: :ok | {:error, term()}
+  def freeze_investigation(id) do
+    with {:ok, investigations} <- list_investigations() do
+      updated =
+        Enum.map(investigations, fn inv ->
+          if Map.get(inv, "id") == id do
+            inv
+            |> Map.put("status", "frozen")
+            |> Map.put("updated_at", iso_now())
+          else
+            inv
+          end
+        end)
+
+      Storage.write_json(Config.investigations_file(), updated)
+    end
+  end
+
+  @spec unfreeze_investigation(String.t()) :: :ok | {:error, term()}
+  def unfreeze_investigation(id) do
+    with {:ok, investigations} <- list_investigations() do
+      updated =
+        Enum.map(investigations, fn inv ->
+          if Map.get(inv, "id") == id do
+            inv
+            |> Map.put("status", "active")
+            |> Map.put("updated_at", iso_now())
+          else
+            inv
+          end
+        end)
+
+      Storage.write_json(Config.investigations_file(), updated)
+    end
+  end
+
+  @spec graduate_investigation(String.t()) :: :ok | {:error, term()}
+  def graduate_investigation(id) do
+    with {:ok, investigations} <- list_investigations() do
+      updated =
+        Enum.map(investigations, fn inv ->
+          if Map.get(inv, "id") == id do
+            inv
+            |> Map.put("status", "graduated")
+            |> Map.put("updated_at", iso_now())
+          else
+            inv
+          end
+        end)
+
+      Storage.write_json(Config.investigations_file(), updated)
+    end
+  end
+
+  @spec link_experiment_to_investigation(String.t(), String.t()) :: :ok | {:error, term()}
+  def link_experiment_to_investigation(exp_id, inv_id) do
+    with {:ok, investigations} <- list_investigations() do
+      updated =
+        Enum.map(investigations, fn inv ->
+          if Map.get(inv, "id") == inv_id do
+            exps = inv |> Map.get("experiments", []) |> Enum.uniq()
+            inv
+            |> Map.put("experiments", Enum.uniq(exps ++ [exp_id]))
+            |> Map.put("updated_at", iso_now())
+          else
+            inv
+          end
+        end)
+
+      Storage.write_json(Config.investigations_file(), updated)
+    end
+  end
+
+  @spec save_session_data(String.t(), String.t()) :: :ok | {:error, term()}
+  def save_session_data(step, content) when is_binary(step) and is_binary(content) do
+    path = Path.join(Config.session_data_dir(), "#{step}.md")
+
+    with :ok <- File.mkdir_p(Config.session_data_dir()),
+         :ok <- File.write(path, content) do
+      :ok
+    end
+  end
+
+  @spec read_session_data(String.t()) :: {:ok, String.t()} | {:error, :not_found}
+  def read_session_data(step) when is_binary(step) do
+    path = Path.join(Config.session_data_dir(), "#{step}.md")
+
+    case File.read(path) do
+      {:ok, content} -> {:ok, content}
+      {:error, :enoent} -> {:error, :not_found}
+      {:error, _} -> {:error, :not_found}
+    end
+  end
+
+  @spec list_session_data() :: [{String.t(), String.t()}]
+  def list_session_data do
+    dir = Config.session_data_dir()
+
+    case File.ls(dir) do
+      {:ok, files} ->
+        files
+        |> Enum.filter(&String.ends_with?(&1, ".md"))
+        |> Enum.sort()
+        |> Enum.map(fn file ->
+          step = String.replace_suffix(file, ".md", "")
+          content = File.read!(Path.join(dir, file))
+          {step, content}
+        end)
+
+      {:error, _} ->
+        []
     end
   end
 

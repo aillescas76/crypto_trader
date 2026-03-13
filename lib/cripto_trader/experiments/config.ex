@@ -5,7 +5,11 @@ defmodule CriptoTrader.Experiments.Config do
   @default_hypotheses_file "hypotheses.json"
   @default_experiments_file "experiments.json"
   @default_findings_file "findings.json"
+  @default_principles_file "principles.json"
   @default_feedback_file "feedback.json"
+  @default_investigations_file "investigations.json"
+  @default_session_file "loop_session.json"
+  @default_session_data_subdir "session_data"
 
   # 2025-01-01 00:00:00 UTC in milliseconds
   @default_training_cutoff_ms 1_735_689_600_000
@@ -47,10 +51,38 @@ defmodule CriptoTrader.Experiments.Config do
     |> to_string()
   end
 
+  @spec principles_file() :: String.t()
+  def principles_file do
+    experiments_env()
+    |> Keyword.get(:principles_file, Path.join(storage_dir(), @default_principles_file))
+    |> to_string()
+  end
+
+  @spec session_data_dir() :: String.t()
+  def session_data_dir do
+    experiments_env()
+    |> Keyword.get(:session_data_dir, Path.join(storage_dir(), @default_session_data_subdir))
+    |> to_string()
+  end
+
+  @spec session_file() :: String.t()
+  def session_file do
+    experiments_env()
+    |> Keyword.get(:session_file, Path.join(storage_dir(), @default_session_file))
+    |> to_string()
+  end
+
   @spec feedback_file() :: String.t()
   def feedback_file do
     experiments_env()
     |> Keyword.get(:feedback_file, Path.join(storage_dir(), @default_feedback_file))
+    |> to_string()
+  end
+
+  @spec investigations_file() :: String.t()
+  def investigations_file do
+    experiments_env()
+    |> Keyword.get(:investigations_file, Path.join(storage_dir(), @default_investigations_file))
     |> to_string()
   end
 

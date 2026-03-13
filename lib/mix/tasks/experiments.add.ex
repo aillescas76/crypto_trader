@@ -36,7 +36,8 @@ defmodule Mix.Tasks.Experiments.Add do
           symbols: :string,
           interval: :string,
           balance: :string,
-          param: :keep
+          param: :keep,
+          investigation: :string
         ]
       )
 
@@ -101,6 +102,13 @@ defmodule Mix.Tasks.Experiments.Add do
     }
 
     :ok = State.upsert_experiment(experiment)
+
+    if inv_id = Keyword.get(opts, :investigation) do
+      case State.link_experiment_to_investigation(exp_id, inv_id) do
+        :ok -> Mix.shell().info("  investigation: #{inv_id}")
+        {:error, _} -> Mix.shell().error("Warning: could not link to investigation #{inv_id}")
+      end
+    end
 
     Mix.shell().info("Queued experiment #{exp_id} (hypothesis #{hypothesis_id})")
     Mix.shell().info("  strategy: #{strategy}")
