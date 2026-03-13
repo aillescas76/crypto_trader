@@ -1,4 +1,5 @@
 ExUnit.start()
 
-Ecto.Migrator.with_repo(CriptoTrader.CandleDB.Repo, &Ecto.Migrator.run(&1, :up, all: true))
+{:ok, _} = CriptoTrader.CandleDB.Repo.start_link()
+Ecto.Migrator.run(CriptoTrader.CandleDB.Repo, :up, all: true)
 Ecto.Adapters.SQL.Sandbox.mode(CriptoTrader.CandleDB.Repo, :manual)
