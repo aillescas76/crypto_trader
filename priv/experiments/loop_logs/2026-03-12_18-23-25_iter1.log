@@ -1,0 +1,10 @@
+It looks like you invoked `/loop` without specifying what to run. Please provide a prompt or slash command, and optionally an interval.
+
+**Usage:** `/loop [interval] <prompt>`
+
+**Examples:**
+- `/loop 5m /experiment-loop`
+- `/loop 30m check experiment results`
+- `/loop /analyse-traces` (defaults to 10m)
+
+What would you like to loop?

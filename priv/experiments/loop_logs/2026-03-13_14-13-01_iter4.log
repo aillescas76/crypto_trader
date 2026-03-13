@@ -1,0 +1,21 @@
+## Iteration Complete
+
+**Results summary:**
+
+| Experiment | Train | Validation | Result |
+|---|---|---|---|
+| MaGatedRotationMomentum8w | 166.84% | -22.74% | FAIL |
+| MaGatedRotationVolScaled | 326.16% | -20.28% | FAIL |
+
+**What went wrong:**
+
+1. **Momentum8w**: The 8w lookback responds too slowly to 2025's trend reversals — the strategy holds declining assets 1-2 extra weeks while the 8w signal still shows positive momentum from the prior bull run. The 4w/2w (Extended) configuration remains optimal.
+
+2. **VolScaled**: EWMA vol is reactive — it spikes *after* crashes and stays elevated during recoveries. The strategy enters recoveries with smaller positions, capturing less upside. The MA gate already handles bear exits; vol scaling penalizes recovery re-entries at the margin.
+
+**MaGatedRotationExtended** (4w lookback, 2w rebalance, Val -12.18%) remains the best validated strategy.
+
+**Best next directions for MaGatedRotation investigation:**
+- `hold_count=3` (top 3 of 6 assets — untested)
+- Dynamic rebalance cadence (weekly when trending, bi-weekly when choppy)
+- Vol regime GATE (not sizing) — suppress entries when cross-asset vol/vol ratio is elevated

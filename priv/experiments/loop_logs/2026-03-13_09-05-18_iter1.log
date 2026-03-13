@@ -1,0 +1,18 @@
+That was a stale background task from one of the research agents — not relevant to current state. The iteration is complete.
+
+---
+
+**Iteration 1 Results:**
+
+| Step | Outcome |
+|---|---|
+| TSMOM | Abandoned at 5a — sign() signal too noisy at 15m, no consistent cross-symbol edge |
+| PostShockReversal | FAIL — genuine edge per trade (WR 52-57%) but out-of-market problem: +8.14% vs BnH +42.20% |
+
+**For the next iteration, the focus must shift to strategies that are mostly in market** — trend-following or regime-based approaches holding for days/weeks that can actually capture the bulk of bull-market returns. Good candidates from the research briefs still available:
+
+- **Ensemble Donchian Channel Breakout** (momentum agent, Idea 2) — breakout on new highs, holds until channel violation, mostly-in-market during trends
+- **RV Regime Filter** (volatility agent, Idea 1) — enters when volatility is expanding positively, could be combined with always-on momentum
+- **PostShockReversal with larger sizing** (3000-5000/trade) — same signal, more deployed capital
+
+Run `/experiment-loop` again to start the next iteration whenever you're ready.

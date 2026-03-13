@@ -1,0 +1,94 @@
+[
+  {
+    "added_at": "2026-03-13T09:50:49.976472Z",
+    "evidence": [
+      "exp-1773392192617-6205"
+    ],
+    "id": "prn-1773395449971-8867",
+    "principle": "Out-of-market event-driven strategies cannot beat BnH PnL% unless position sizing is large enough to compensate for low market exposure (<=10% of time in market requires >= 10x per-trade edge vs BnH return rate)",
+    "tags": [
+      "out-of-market",
+      "sizing",
+      "invalid-hypothesis"
+    ]
+  },
+  {
+    "added_at": "2026-03-13T11:26:33.554238Z",
+    "evidence": [
+      "exp-1773400914840-0927"
+    ],
+    "id": "prn-1773401193550-5568",
+    "principle": "Simple MA regime filters overfit to the number of bear/bull cycles in training. One clean bear market provides only 1 data point — not enough to validate the filter. A strategy that makes 1 correct macro call in training is likely to fail when the validation period has a different macro structure (e.g., choppy near the threshold).",
+    "tags": [
+      "overfit",
+      "regime-filter",
+      "statistical-significance"
+    ]
+  },
+  {
+    "added_at": "2026-03-13T12:34:55.503360Z",
+    "evidence": [
+      "exp-1773404972307-7147"
+    ],
+    "id": "prn-1773405295499-0803",
+    "principle": "Per-asset trend gating is more robust than global regime filtering: individual assets crossing below their MA allows partial portfolio exposure rather than forcing all-in/all-out binary transitions. This reduces threshold-bounce fragility and maintains exposure diversity across assets with different drawdown timings.",
+    "tags": [
+      "regime-filter",
+      "cross-sectional",
+      "robustness"
+    ]
+  },
+  {
+    "added_at": "2026-03-13T12:34:57.193473Z",
+    "evidence": [
+      "exp-1773404972307-7147"
+    ],
+    "id": "prn-1773405297190-5311",
+    "principle": "Cross-sectional momentum + trend gating is the combination that works: momentum alone underperforms BnH (it chases losers in correlated bear markets), trend gating alone overfits (single MA call), but their combination concentrates in bull leaders while avoiding confirmed downtrends.",
+    "tags": [
+      "cross-sectional",
+      "momentum",
+      "regime-filter"
+    ]
+  },
+  {
+    "added_at": "2026-03-13T13:07:12.969884Z",
+    "evidence": [
+      "exp-1773406241656-9467"
+    ],
+    "id": "prn-1773407232966-6568",
+    "principle": "Rebalance frequency is a regime-dependent tradeoff: shorter intervals compound faster in trending markets but generate costly churn in range-bound markets. For weekly-scale momentum strategies, bi-weekly rebalancing improves OOS performance in choppy regimes at the cost of lower in-sample returns during strong trends.",
+    "tags": [
+      "rebalance-frequency",
+      "momentum",
+      "regime-filter"
+    ]
+  },
+  {
+    "added_at": "2026-03-13T13:44:08.180958Z",
+    "evidence": [
+      "exp-1773409078246-0728"
+    ],
+    "id": "prn-1773409448177-8862",
+    "principle": "Momentum lookback should be 2-4x the rebalance interval. A lookback much longer than the rebalance period (e.g., 8w lookback with 2w rebalance) creates lag at trend reversals: the signal still shows positive momentum from prior weeks while the asset is already declining, keeping the strategy in losing positions longer.",
+    "tags": [
+      "momentum",
+      "rebalance-frequency",
+      "signal-lag"
+    ]
+  },
+  {
+    "added_at": "2026-03-13T13:44:15.290066Z",
+    "evidence": [
+      "exp-1773409094711-4642"
+    ],
+    "id": "prn-1773409455286-5223",
+    "principle": "Reactive vol-based sizing (EWMA) hurts gate-protected momentum strategies: EWMA vol is elevated during post-crash recoveries, causing the strategy to enter recoveries with smaller positions and capture less upside. The trend gate already handles bear-market exits; vol scaling at the margin penalizes recovery re-entries. Vol scaling may benefit absolute-return strategies but not momentum strategies with a trend-exit gate.",
+    "tags": [
+      "vol-scaling",
+      "momentum",
+      "regime-filter",
+      "reactive"
+    ]
+  }
+]

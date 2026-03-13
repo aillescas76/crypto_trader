@@ -1,0 +1,11 @@
+---
+
+**Iteration 4 complete.** Summary:
+
+| Candidate | Result | Key insight |
+|---|---|---|
+| MaGatedRotationExtended (2w rebalance) | **PASSED** ✓ | Val -12.18% vs -16.89% — bi-weekly reduces churn in choppy 2025 |
+| VolScaledMomentum (inv-vol sizing) | Abandoned at 5a | BTC always least volatile → static tilt, negligible delta |
+| MaGatedRotationAtrStop (ATR trail) | Abandoned at 5a | 92% false positive rate; timescale mismatch kills it |
+
+**Investigation MaGatedRotation now has 2 consecutive passes.** The mechanism is solidly validated. Next round will advance it with a third micro-variant (most promising: 8w momentum lookback to match the 2w rebalance cadence, or hold_count=3 for more diversification).

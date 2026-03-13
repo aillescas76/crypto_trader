@@ -1,1 +1,83 @@
-[]
+[
+  {
+    "added_at": "2026-03-13T08:59:02.234307Z",
+    "body": "**Mechanism verdict:** viable-signal — real per-trade edge exists, wrong architecture\n**Per-trade edge:** WR 52.1% training / 49.1% validation | avg hold ~4 candles (1h) | PF ~1.05\n**Why it failed pass criteria:** train PnL 8.14% vs BnH 42.2% — strategy only in-market ~10% of time\n**Regime behaviour:** bear-2022: low drawdown (16.2%) because rarely in market; bull-2024: misses almost all upside\n**Generalizable lesson:** market exposure time is as important as per-trade edge; being right 52% of the time on 10% of candles is inferior to riding the trend\n**Next directions:** 1. Mostly-in-market trend strategies (exposure >70%) with risk controls; 2. Aggressive sizing (30-50% per trade) on shock-reversal signal",
+    "experiment_id": "exp-1773392192617-6205",
+    "id": "fnd-1773392342230-8547",
+    "tags": [
+      "invalid-hypothesis",
+      "partial-signal"
+    ],
+    "title": "PostShockReversal: event-driven short-hold can't beat BnH PnL% — out-of-market problem"
+  },
+  {
+    "added_at": "2026-03-13T11:26:27.293555Z",
+    "body": "**Mechanism verdict:** no-edge — mechanism works in sample but fails OOS\n**Per-trade edge:** strong in training (196.7% PnL vs BnH ~66%) driven entirely by sitting out 2022 bear; validation -48.11%\n**Why it failed pass criteria:** training edge = 1 macro regime call (avoid 2022 bear). Validation 2025 had BTC churning near SMA200 with 8 transitions, each whipsaw compounding losses. The 3% buffer was insufficient to prevent the cascade.\n**Regime behaviour:** bear-2022: correctly out (BTC 0.28% below SMA200 on Jan 1, 2022); recovery-2023: entered March 2023 at $28k; bull-2024: mostly in; validation-2025: 8 whipsaw transitions → accumulated -48%\n**Generalizable lesson:** Simple MA regime filters are highly sensitive to the market condition they encounter — they work perfectly when tested in a period containing exactly one clean bear market + recovery, but fail badly when price chops near the MA threshold. Statistical evidence from 13 transitions (essentially 1 macro call) is insufficient.\n**Next directions:** 1. More robust regime detection (hidden Markov, multi-MA agreement, volatility-regime); 2. Asymmetric entry/exit (much larger exit buffer than entry buffer to prevent re-entry during chop); 3. Abandon pure MA regime filters as primary strategy",
+    "experiment_id": "exp-1773400914840-0927",
+    "id": "fnd-1773401187290-7837",
+    "tags": [
+      "overfit",
+      "invalid-hypothesis",
+      "drawdown-issue"
+    ],
+    "title": "DailyMaRegime: one-cycle macro overfit — devastating validation whipsaws"
+  },
+  {
+    "added_at": "2026-03-13T12:34:25.549510Z",
+    "body": "**Mechanism verdict:** no-edge — asymmetric buffer fails to address root cause\n**Per-trade edge:** Training 145.9% (down from 196.7% with 3% buffer) | Validation -49.29% (worse than original -48.11%)\n**Why it failed pass criteria:** Larger exit buffer (6%) exits the bear later at a lower price, degrading training performance. Validation still whipsaws because price in 2025 still crossed 6% below SMA200 at some point — the threshold-bounce problem is structural, not buffer-size dependent.\n**Regime behaviour:** bear-2022: exits later (worse price) → lower training PnL; validation-2025: still experiencing regime oscillations despite larger buffer\n**Generalizable lesson:** Increasing an exit buffer shifts WHERE whipsaws occur but doesn't eliminate the sensitivity of threshold-based regime filters to price churning. The MA regime approach is fundamentally fragile regardless of buffer size.\n**Next directions:** 1. Abandon MA-based single-asset regime filters entirely; 2. Focus on MaGatedRotation (PASSED) — per-asset approach avoids global threshold fragility",
+    "experiment_id": "exp-1773404954757-9300",
+    "id": "fnd-1773405265545-0225",
+    "tags": [
+      "overfit",
+      "drawdown-issue",
+      "invalid-hypothesis"
+    ],
+    "title": "DailyMaRegimeAsymmetric: larger exit buffer made training worse and didn't fix validation"
+  },
+  {
+    "added_at": "2026-03-13T12:34:45.946823Z",
+    "body": "**Mechanism verdict:** viable-signal — real edge confirmed in training AND validation\n**Per-trade edge:** Train 372.69% | Val -16.89% (but PASSES — validation BnH more negative)\n**Why it passed pass criteria:** Per-asset 20-week SMA gate allows partial exposure (different assets below MA at different times), avoiding binary all-in/all-out fragility. Weekly rotation to top-2 momentum assets concentrates in bull-market leaders while sitting out confirmed downtrends per-asset.\n**Regime behaviour:** bear-2022: all assets below 20w MA → full cash → 0% loss vs BnH -50%; bull-2024: concentrated in XRP/BNB leaders → massive outperformance; validation-2025: BnH negative, strategy -16.89% beats BnH\n**Generalizable lesson:** Cross-sectional momentum combined with a per-asset trend gate outperforms pure timing strategies because it maintains partial exposure and concentrates dynamically in the best assets of the moment.\n**Next directions:** 1. Test hold_count=3 (top 3 of 6); 2. Test momentum_lookback=8w; 3. Add position sizing by momentum strength; 4. Try shorter MA gate (13w) to re-enter faster in recoveries",
+    "experiment_id": "exp-1773404972307-7147",
+    "id": "fnd-1773405285943-1097",
+    "tags": [
+      "improvement-idea"
+    ],
+    "title": "MaGatedRotation: PASSED — per-asset MA gate + momentum rotation beats BnH in both splits"
+  },
+  {
+    "added_at": "2026-03-13T13:07:04.414219Z",
+    "body": "**Mechanism verdict:** viable-signal — PASSED both splits\n**Per-trade edge:** Train 155.05% | Val -12.18% (beats negative BnH validation ~-16.93%)\n**Why it passed pass criteria:** Extending rebalance interval from 1w to 2w reduces rotation churn in choppy 2025 market. Validation improved from -16.89% to -12.18% (+4.71pp). Training fell from 372.69% to 155.05% (-217pp) because fewer trades means less compounding in strong 2022-2024 bull trends.\n**Regime behaviour:** bear-2022: same as base (all below SMA → cash → ~0% drawdown); recovery-2023: fewer entries means slower capture; bull-2024: misses some rapid rotation gains; validation-2025: fewer whipsaws → improved PnL\n**Generalizable lesson:** Rebalance frequency is a regime-dependent tradeoff — shorter intervals compound faster in trending markets but generate costly churn in range-bound markets. The optimal cadence depends on which regime dominates the backtest window.\n**Next directions:** 1. Test momentum_lookback=8w (longer signal to match 2w rebalance); 2. Test hold_count=3 (top 3 of 6 assets); 3. Try dynamic rebalance — weekly in trending, bi-weekly in choppy (detect regime by ADX or volatility ratio)",
+    "experiment_id": "exp-1773406241656-9467",
+    "id": "fnd-1773407224410-2915",
+    "tags": [
+      "improvement-idea",
+      "regime-filter",
+      "cross-sectional"
+    ],
+    "title": "MaGatedRotationExtended: 2w rebalance improves validation at cost of lower training returns"
+  },
+  {
+    "added_at": "2026-03-13T13:43:46.746506Z",
+    "body": "**Mechanism verdict:** no-edge — 8w lookback is worse than 4w for validation\n**Per-trade edge:** Train 166.84% (beats BnH 42.2% ✓) | Val -22.74% (vs BnH -16.93% ✗)\n**Why it failed pass criteria:** In choppy 2025, slower 8w signal responds less quickly to trend reversals. When an asset's price starts declining after a bull run, the 8w momentum still shows positive returns from 2+ months ago, keeping the strategy long for 1-2 extra weeks before the MA gate forces exit. Those extra weeks of declining price are additional losses vs the 4w signal which would have de-ranked the asset sooner. Validation went from -12.18% (4w/2w) to -22.74% (-10.56pp degradation).\n**Regime behaviour:** bear-2022: unchanged (MA gate dominates); recovery-2023: likely similar; bull-2024: slight improvement from smoother compounding; validation-2025: significantly worse — slower signal holds losers too long\n**Generalizable lesson:** In cross-sectional momentum with weekly rebalancing, a momentum lookback much longer than the rebalance interval (8w vs 2w) creates lag at trend reversals. The lookback should be 2-4x the rebalance interval for responsive signal alignment.\n**Next directions:** 1. Try hold_count=3 (top 3 of 6 assets — more diversification reduces single-asset risk); 2. Dynamic rebalance cadence (weekly when trending via ADX, bi-weekly when choppy)",
+    "experiment_id": "exp-1773409078246-0728",
+    "id": "fnd-1773409426743-7176",
+    "tags": [
+      "overfit",
+      "invalid-hypothesis",
+      "momentum"
+    ],
+    "title": "MaGatedRotationMomentum8w: longer lookback hurts choppy validation — signal too slow"
+  },
+  {
+    "added_at": "2026-03-13T13:44:00.739931Z",
+    "body": "**Mechanism verdict:** no-edge — vol targeting hurts momentum PnL% in choppy markets despite theoretical Sharpe benefit\n**Per-trade edge:** Train 326.16% (beats BnH 42.2% ✓ but lower than base 372.69%) | Val -20.28% (vs BnH -16.93% ✗)\n**Why it failed pass criteria:** Validation went from -16.89% (fixed sizing) to -20.28% (-3.39pp degradation). Root cause: EWMA vol is reactive (lags crashes ~1-2 weeks). In 2025's volatile market, vol spikes AFTER price drops — so when the strategy re-enters a recovering asset, vol is still elevated, causing a smaller position. The recovery's upside is captured with less capital. The MA gate already handles full bear-market exits; vol scaling only modulates size at the margin, and that margin works against you in a recovery phase.\n**Regime behaviour:** bear-2022: identical to base (MA gate exits to cash before vol scaling matters); bull-2024: slightly lower returns (smaller avg position); validation-2025: worse — reduced sizing during volatile recoveries nets less upside\n**Generalizable lesson:** Reactive vol scaling (EWMA) reduces position size AFTER losses and DURING recoveries (when vol is still elevated). For momentum strategies with a trend-exit gate, this systematically underweights re-entries in volatile bull phases, hurting PnL% without proportional drawdown reduction. Vol scaling may benefit absolute-return strategies but not gate-protected rotation strategies.\n**Next directions:** 1. If vol is to be used, try predictive vol signal rather than reactive EWMA; 2. Accept that MaGatedRotation(Extended) with fixed sizing may be the right baseline; 3. Focus investigation on hold_count variation",
+    "experiment_id": "exp-1773409094711-4642",
+    "id": "fnd-1773409440736-2089",
+    "tags": [
+      "invalid-hypothesis",
+      "drawdown-issue",
+      "regime-filter"
+    ],
+    "title": "MaGatedRotationVolScaled: reactive vol sizing hurts validation — captures less recovery"
+  }
+]

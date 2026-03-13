@@ -1,0 +1,1 @@
+That was the Step 5a BtcLeadLag analysis script from the Opus subagent — it got killed by SIGTERM mid-execution (exit code 144 = SIGTERM). The subagent ran that script internally and then re-ran it successfully using a different approach, so the analysis was complete. This background task notification is stale and can be ignored.

@@ -1,1 +1,44 @@
-[]
+[
+  {
+    "id": "hyp-1773392192609-8991",
+    "queued_at": "2026-03-13T08:56:32.596278Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.PostShockReversal20260313",
+    "text": "Liquidation cascades and stop hunts create a short-term long reversal edge because automated stop-loss executions and thin order book wicks push spot prices transiently below fair value, which reverts within 2 hours as mechanical selling pressure clears. Signal: down candle body > 2.0 * ATR(14), hold 8 candles. All 6 symbols show positive edge (WR 52-57%, PF 1.02-1.18). 2022 bear: +9.14% PnL, 11.97% max DD. Worst 3m DD: 13.15%. Beats BnH (+42.2%, Sharpe 0.407, 68% max DD) on risk-adjusted terms."
+  },
+  {
+    "id": "hyp-1773400914833-3784",
+    "queued_at": "2026-03-13T11:21:54.821364Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.DailyMaRegime20260313",
+    "text": "Deep crypto bear markets create a regime-protection edge because a 200-day SMA on per-symbol daily closes reliably separates bull and bear macro phases. The signal fires approximately 0.4 regime transitions per month per pair. When each symbol's daily close is above its own 200-day SMA, the strategy holds full long; when it drops below SMA x 0.97 (3% exit buffer), it exits to cash. Using per-symbol SMA200 with 3% buffer, performance is robust for SMA periods 100-200. Expected to beat buy-and-hold (+66% equal-weight training average) AND achieve max_drawdown < 40% (BTCUSDC measured 23%) on both training (pre-2025) and validation (2025+) splits."
+  },
+  {
+    "id": "hyp-1773404954750-9293",
+    "queued_at": "2026-03-13T12:29:14.738097Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.DailyMaRegimeAsymmetric20260313",
+    "text": "Increasing the SMA200 exit buffer from 3% to 6% (asymmetric hysteresis) prevents whipsaw regime transitions in 2025 validation. The prior DailyMaRegime failed due to 8 churning transitions near the threshold; 6% exceeds normal daily crypto volatility (3-5%), reducing transitions to ~2-3. Entry remains at close > SMA200 (unchanged). Expected to beat buy-and-hold (~66% training) AND achieve max_drawdown < 40% on both training (pre-2025) and validation (2025+) splits."
+  },
+  {
+    "id": "hyp-1773404972301-4168",
+    "queued_at": "2026-03-13T12:29:32.288929Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotation20260313",
+    "text": "Cross-sectional momentum among crypto assets creates a positive edge because recent outperformers tend to continue outperforming laggards at 4-week horizons, while a per-asset 20-week SMA filter prevents holding assets in confirmed downtrends. The signal rebalances weekly, holding the top 2 qualifying assets (those above their own 20-week SMA, ranked by 4-week return). The per-asset MA gate limits bear-market exposure: in 2022, all tested symbols fell below their MAs from January onward, keeping max drawdown near 0% vs BnH -50.5%. Performance is stable across 4-8 week momentum lookbacks. Expected to beat buy-and-hold (~70-77% in 3-symbol training) AND achieve max_drawdown < 40% (3-symbol training: 25% max DD with 20w MA filter) on both training (pre-2025) and validation (2025+) splits."
+  },
+  {
+    "id": "hyp-1773406241649-0009",
+    "queued_at": "2026-03-13T12:50:41.637880Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotationExtended20260313",
+    "text": "Extending the rebalance interval from 1 week to 2 weeks reduces rotation churn in choppy, range-bound markets. The original MaGatedRotation had 19 trades in ~13 validation weeks with 62.5% WR but -16.89% PnL — frequent weekly rotation generates whipsaw friction. Bi-weekly holds let momentum trades develop and reduce noise-driven exits, expected to improve validation PnL from -16.89% while preserving the bear-protection mechanism (all assets below MA → cash). All other parameters unchanged: 20w SMA gate, 4w momentum lookback, top-2 assets, k per position."
+  },
+  {
+    "id": "hyp-1773409078239-7251",
+    "queued_at": "2026-03-13T13:37:58.227824Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotationMomentum8w20260313",
+    "text": "Extending momentum_lookback from 4w to 8w (keeping 2w rebalance, 20w MA gate, top-2) produces a smoother cross-sectional momentum signal that reduces false rotations in choppy validation markets. The 2w rebalance improved validation by +4.71pp; an 8w lookback further reduces noise-driven exits while aligning signal horizon with the longer hold duration. Expected to improve validation PnL from -12.18% toward -8% to -10% and partially recover training from 155% toward 200-250%, maintaining max_drawdown < 40% on both splits."
+  },
+  {
+    "id": "hyp-1773409094703-4190",
+    "queued_at": "2026-03-13T13:38:14.688907Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotationVolScaled20260313",
+    "text": "Volatility clustering in crypto (daily EWMA vol ACF=0.985) allows EWMA-based position sizing to reduce risk exposure during high-vol regimes while maintaining near-full capital deployment during low-vol regimes. Using EWMA vol_lookback=20d, target_vol=0.30, max_position_fraction=0.5: median position is 4854 vs 5000 fixed (cap binds 81% of days), reducing max drawdown from ~14.75% to ~9.30% (BTC-only simulation) while reducing average position by ~3%. MA gate handles 2022 bear exits; vol scaling adds protection during within-trend shocks. With base MaGatedRotation at +372.69% training, vol-scaled version expected to still beat buy-and-hold (+44.9% training) and improve Sharpe through better risk-adjusted sizing, maintaining max_drawdown < 40% on both training (pre-2025) and validation (2025+) splits."
+  }
+]

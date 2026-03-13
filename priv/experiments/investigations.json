@@ -1,0 +1,44 @@
+[
+  {
+    "concept": "200-day SMA regime filter: hold long when daily close > SMA200, exit to cash when below SMA200*0.97 — avoids deep bear markets while staying mostly in-market during bull phases",
+    "created_at": "2026-03-13T11:21:43.303631Z",
+    "discard_reason": null,
+    "experiments": [
+      "exp-1773400914840-0927",
+      "exp-1773404954757-9300"
+    ],
+    "id": "inv-1773400903300-0953",
+    "name": "DailyMaRegime",
+    "parent_experiment_id": null,
+    "status": "frozen",
+    "updated_at": "2026-03-13T12:35:01.909148Z"
+  },
+  {
+    "concept": "Per-asset 20-week SMA gate filters out assets in downtrends, then 4-week cross-sectional momentum rotation allocates to top 2 of qualifying assets. Always in-market (either in top-2 assets or cash if all below MA). Bear protection: all assets go below MA in systematic bear → cash; bull: concentrated in momentum leaders.",
+    "created_at": "2026-03-13T12:29:22.032566Z",
+    "discard_reason": null,
+    "experiments": [
+      "exp-1773404972307-7147",
+      "exp-1773406241656-9467",
+      "exp-1773409078246-0728"
+    ],
+    "id": "inv-1773404962028-3485",
+    "name": "MaGatedRotation",
+    "parent_experiment_id": null,
+    "status": "active",
+    "updated_at": "2026-03-13T13:37:58.248826Z"
+  },
+  {
+    "concept": "Volatility-targeted position sizing on MaGatedRotation: replace fixed 5k/position with EWMA vol targeting (target_vol=0.30, halflife=20d) to reduce risk during high-vol regimes while maintaining near-full capital deployment in low-vol regimes. Exploits vol clustering (ACF=0.985) in crypto assets.",
+    "created_at": "2026-03-13T13:37:46.956962Z",
+    "discard_reason": null,
+    "experiments": [
+      "exp-1773409094711-4642"
+    ],
+    "id": "inv-1773409066953-9078",
+    "name": "MaGatedRotationVolScaled",
+    "parent_experiment_id": null,
+    "status": "active",
+    "updated_at": "2026-03-13T13:38:14.713913Z"
+  }
+]

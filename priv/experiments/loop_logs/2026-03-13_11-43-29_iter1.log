@@ -1,0 +1,19 @@
+---
+
+**Iteration 2 complete.** Summary:
+
+**What we explored:**
+| Candidate | Exposure | Verdict |
+|-----------|----------|---------|
+| EmaMultiHorizon (8/34+200 filter) | 41% | Abandoned — systematic bull underperformance |
+| DonchianBreakout (N=15, ATR stop) | 22-27% | Abandoned — too low exposure to beat BnH |
+| **DailyMaRegime (SMA200, 3% buffer)** | 57% | **Ran — FAILED** |
+
+**DailyMaRegime result:**
+- Training: **+196.7%** (avoided entire 2022 bear)
+- Validation: **-48.11%** (BTC churned near SMA200 with 8 whipsaw round-trips in 2025)
+- Verdict: classic one-cycle overfit — 13 total regime transitions ≈ 1 macro bet, not a robust signal
+
+**New principle added:** Simple MA regime filters overfit to the number of bear/bull cycles in training. One clean bear market = 1 data point.
+
+**Direction for next iteration:** Need strategies that are either (a) robust to choppy near-MA conditions, or (b) don't rely on a single MA threshold — e.g. multi-MA agreement (price above 50+100+200 day MA simultaneously), volatility-regime + trend combo, or extending BbRsiReversion with a smarter bear filter.

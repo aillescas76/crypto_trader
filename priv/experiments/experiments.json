@@ -1,1 +1,450 @@
-[]
+[
+  {
+    "baseline_training": {
+      "closed_trades": 0,
+      "max_drawdown_pct": 70.7273,
+      "pnl": 4220.4435,
+      "pnl_pct": 42.2044,
+      "sharpe": 0.260567,
+      "trades": 6,
+      "win_rate": 0.0
+    },
+    "baseline_validation": {
+      "closed_trades": 0,
+      "max_drawdown_pct": 47.9896,
+      "pnl": -1692.9847,
+      "pnl_pct": -16.9298,
+      "sharpe": -0.169507,
+      "trades": 6,
+      "win_rate": 0.0
+    },
+    "finished_at": "2026-03-13T08:58:19.878251Z",
+    "hypothesis_id": "hyp-1773392192609-8991",
+    "id": "exp-1773392192617-6205",
+    "initial_balance": 1.0e4,
+    "interval": "15m",
+    "queued_at": "2026-03-13T08:56:32.617055Z",
+    "status": "failed",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.PostShockReversal20260313",
+    "strategy_params": {},
+    "symbols": [
+      "BTCUSDC",
+      "ETHUSDC",
+      "SOLUSDC",
+      "BNBUSDC",
+      "ADAUSDC",
+      "XRPUSDC"
+    ],
+    "training_result": {
+      "closed_trades": 3068,
+      "max_drawdown_pct": 16.2369,
+      "pnl": 813.8691,
+      "pnl_pct": 8.1387,
+      "sharpe": 0.290263,
+      "trades": 6136,
+      "win_rate": 52.1186
+    },
+    "validation_result": {
+      "closed_trades": 879,
+      "max_drawdown_pct": 13.0616,
+      "pnl": -538.5221,
+      "pnl_pct": -5.3852,
+      "sharpe": -0.297502,
+      "trades": 1758,
+      "win_rate": 49.1468
+    },
+    "verdict": {
+      "reasons": [
+        "FAIL: training PnL% 8.14% vs baseline 42.2%",
+        "PASS: training Sharpe 0.29 vs baseline 0.26, max_dd 16.24% (threshold 40.0%)",
+        "PASS: validation PnL% -5.39% vs baseline -16.93%",
+        "PASS: validation Sharpe -0.3 vs baseline -0.17, max_dd 13.06% (threshold 40.0%)"
+      ],
+      "verdict": "fail"
+    }
+  },
+  {
+    "baseline_training": {
+      "closed_trades": 0,
+      "max_drawdown_pct": 70.7273,
+      "pnl": 4220.4435,
+      "pnl_pct": 42.2044,
+      "sharpe": 0.260567,
+      "trades": 6,
+      "win_rate": 0.0
+    },
+    "baseline_validation": {
+      "closed_trades": 0,
+      "max_drawdown_pct": 47.9896,
+      "pnl": -1692.9847,
+      "pnl_pct": -16.9298,
+      "sharpe": -0.169507,
+      "trades": 6,
+      "win_rate": 0.0
+    },
+    "finished_at": "2026-03-13T11:25:44.769889Z",
+    "hypothesis_id": "hyp-1773400914833-3784",
+    "id": "exp-1773400914840-0927",
+    "initial_balance": 1.0e4,
+    "interval": "15m",
+    "queued_at": "2026-03-13T11:21:54.840298Z",
+    "status": "failed",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.DailyMaRegime20260313",
+    "strategy_params": {},
+    "symbols": [
+      "BTCUSDC",
+      "ETHUSDC",
+      "SOLUSDC",
+      "BNBUSDC",
+      "ADAUSDC",
+      "XRPUSDC"
+    ],
+    "training_result": {
+      "closed_trades": 15,
+      "max_drawdown_pct": 39.8806,
+      "pnl": 19669.8753,
+      "pnl_pct": 196.6988,
+      "sharpe": 0.776914,
+      "trades": 45,
+      "win_rate": 0.0
+    },
+    "validation_result": {
+      "closed_trades": 4,
+      "max_drawdown_pct": 61.5814,
+      "pnl": -4811.2252,
+      "pnl_pct": -48.1123,
+      "sharpe": -0.479,
+      "trades": 17,
+      "win_rate": 25.0
+    },
+    "verdict": {
+      "reasons": [
+        "FAIL: validation PnL% -48.11% vs baseline -16.93%",
+        "FAIL: validation Sharpe -0.48 vs baseline -0.17, max_dd 61.58% (threshold 40.0%)",
+        "PASS: training PnL% 196.7% vs baseline 42.2%",
+        "PASS: training Sharpe 0.78 vs baseline 0.26, max_dd 39.88% (threshold 40.0%)"
+      ],
+      "verdict": "fail"
+    }
+  },
+  {
+    "baseline_training": {
+      "closed_trades": 0,
+      "max_drawdown_pct": 70.7273,
+      "pnl": 4220.4435,
+      "pnl_pct": 42.2044,
+      "sharpe": 0.260567,
+      "trades": 6,
+      "win_rate": 0.0
+    },
+    "baseline_validation": {
+      "closed_trades": 0,
+      "max_drawdown_pct": 47.9896,
+      "pnl": -1692.9847,
+      "pnl_pct": -16.9298,
+      "sharpe": -0.169507,
+      "trades": 6,
+      "win_rate": 0.0
+    },
+    "finished_at": "2026-03-13T12:32:36.738380Z",
+    "hypothesis_id": "hyp-1773404954750-9293",
+    "id": "exp-1773404954757-9300",
+    "initial_balance": 1.0e4,
+    "interval": "15m",
+    "queued_at": "2026-03-13T12:29:14.757725Z",
+    "status": "failed",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.DailyMaRegimeAsymmetric20260313",
+    "strategy_params": {},
+    "symbols": [
+      "BTCUSDC",
+      "ETHUSDC",
+      "SOLUSDC",
+      "BNBUSDC",
+      "ADAUSDC",
+      "XRPUSDC"
+    ],
+    "training_result": {
+      "closed_trades": 14,
+      "max_drawdown_pct": 40.6223,
+      "pnl": 14590.1073,
+      "pnl_pct": 145.9011,
+      "sharpe": 0.678107,
+      "trades": 40,
+      "win_rate": 0.0
+    },
+    "validation_result": {
+      "closed_trades": 2,
+      "max_drawdown_pct": 59.9781,
+      "pnl": -4929.326,
+      "pnl_pct": -49.2933,
+      "sharpe": -0.532637,
+      "trades": 12,
+      "win_rate": 0.0
+    },
+    "verdict": {
+      "reasons": [
+        "FAIL: validation PnL% -49.29% vs baseline -16.93%",
+        "FAIL: validation Sharpe -0.53 vs baseline -0.17, max_dd 59.98% (threshold 40.0%)",
+        "PASS: training PnL% 145.9% vs baseline 42.2%",
+        "PASS: training Sharpe 0.68 vs baseline 0.26, max_dd 40.62% (threshold 40.0%)"
+      ],
+      "verdict": "fail"
+    }
+  },
+  {
+    "baseline_training": {
+      "closed_trades": 0,
+      "max_drawdown_pct": 70.7273,
+      "pnl": 4220.4435,
+      "pnl_pct": 42.2044,
+      "sharpe": 0.260567,
+      "trades": 6,
+      "win_rate": 0.0
+    },
+    "baseline_validation": {
+      "closed_trades": 0,
+      "max_drawdown_pct": 47.9896,
+      "pnl": -1692.9847,
+      "pnl_pct": -16.9298,
+      "sharpe": -0.169507,
+      "trades": 6,
+      "win_rate": 0.0
+    },
+    "finished_at": "2026-03-13T12:33:26.853655Z",
+    "hypothesis_id": "hyp-1773404972301-4168",
+    "id": "exp-1773404972307-7147",
+    "initial_balance": 1.0e4,
+    "interval": "15m",
+    "queued_at": "2026-03-13T12:29:32.307945Z",
+    "status": "passed",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotation20260313",
+    "strategy_params": {},
+    "symbols": [
+      "BTCUSDC",
+      "ETHUSDC",
+      "SOLUSDC",
+      "BNBUSDC",
+      "ADAUSDC",
+      "XRPUSDC"
+    ],
+    "training_result": {
+      "closed_trades": 24,
+      "max_drawdown_pct": 47.0693,
+      "pnl": 37269.0898,
+      "pnl_pct": 372.6909,
+      "sharpe": 0.748305,
+      "trades": 54,
+      "win_rate": 62.5
+    },
+    "validation_result": {
+      "closed_trades": 8,
+      "max_drawdown_pct": 58.6269,
+      "pnl": -1688.9975,
+      "pnl_pct": -16.89,
+      "sharpe": 0.012091,
+      "trades": 19,
+      "win_rate": 62.5
+    },
+    "verdict": {
+      "reasons": [
+        "PASS: training PnL% 372.69% vs baseline 42.2%",
+        "PASS: training Sharpe 0.75 vs baseline 0.26, max_dd 47.07% (threshold 40.0%)",
+        "PASS: validation PnL% -16.89% vs baseline -16.93%",
+        "PASS: validation Sharpe 0.01 vs baseline -0.17, max_dd 58.63% (threshold 40.0%)"
+      ],
+      "verdict": "pass"
+    }
+  },
+  {
+    "baseline_training": {
+      "closed_trades": 0,
+      "max_drawdown_pct": 70.7273,
+      "pnl": 4220.4435,
+      "pnl_pct": 42.2044,
+      "sharpe": 0.260567,
+      "trades": 6,
+      "win_rate": 0.0
+    },
+    "baseline_validation": {
+      "closed_trades": 0,
+      "max_drawdown_pct": 47.9896,
+      "pnl": -1692.9847,
+      "pnl_pct": -16.9298,
+      "sharpe": -0.169507,
+      "trades": 6,
+      "win_rate": 0.0
+    },
+    "finished_at": "2026-03-13T12:54:15.895435Z",
+    "hypothesis_id": "hyp-1773406241649-0009",
+    "id": "exp-1773406241656-9467",
+    "initial_balance": 1.0e4,
+    "interval": "15m",
+    "queued_at": "2026-03-13T12:50:41.656716Z",
+    "status": "passed",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotationExtended20260313",
+    "strategy_params": {},
+    "symbols": [
+      "BTCUSDC",
+      "ETHUSDC",
+      "SOLUSDC",
+      "BNBUSDC",
+      "ADAUSDC",
+      "XRPUSDC"
+    ],
+    "training_result": {
+      "closed_trades": 5,
+      "max_drawdown_pct": 72.9784,
+      "pnl": 15505.088,
+      "pnl_pct": 155.0509,
+      "sharpe": 0.398092,
+      "trades": 15,
+      "win_rate": 40.0
+    },
+    "validation_result": {
+      "closed_trades": 6,
+      "max_drawdown_pct": 55.6561,
+      "pnl": -1218.1332,
+      "pnl_pct": -12.1813,
+      "sharpe": 0.035061,
+      "trades": 15,
+      "win_rate": 83.3333
+    },
+    "verdict": {
+      "reasons": [
+        "PASS: training PnL% 155.05% vs baseline 42.2%",
+        "PASS: training Sharpe 0.4 vs baseline 0.26, max_dd 72.98% (threshold 40.0%)",
+        "PASS: validation PnL% -12.18% vs baseline -16.93%",
+        "PASS: validation Sharpe 0.04 vs baseline -0.17, max_dd 55.66% (threshold 40.0%)"
+      ],
+      "verdict": "pass"
+    }
+  },
+  {
+    "baseline_training": {
+      "closed_trades": 0,
+      "max_drawdown_pct": 70.7273,
+      "pnl": 4220.4435,
+      "pnl_pct": 42.2044,
+      "sharpe": 0.260567,
+      "trades": 6,
+      "win_rate": 0.0
+    },
+    "baseline_validation": {
+      "closed_trades": 0,
+      "max_drawdown_pct": 47.9896,
+      "pnl": -1692.9847,
+      "pnl_pct": -16.9298,
+      "sharpe": -0.169507,
+      "trades": 6,
+      "win_rate": 0.0
+    },
+    "finished_at": "2026-03-13T13:41:12.771116Z",
+    "hypothesis_id": "hyp-1773409078239-7251",
+    "id": "exp-1773409078246-0728",
+    "initial_balance": 1.0e4,
+    "interval": "15m",
+    "queued_at": "2026-03-13T13:37:58.246279Z",
+    "status": "failed",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotationMomentum8w20260313",
+    "strategy_params": {},
+    "symbols": [
+      "BTCUSDC",
+      "ETHUSDC",
+      "SOLUSDC",
+      "BNBUSDC",
+      "ADAUSDC",
+      "XRPUSDC"
+    ],
+    "training_result": {
+      "closed_trades": 4,
+      "max_drawdown_pct": 71.2368,
+      "pnl": 16683.8586,
+      "pnl_pct": 166.8386,
+      "sharpe": 0.414761,
+      "trades": 13,
+      "win_rate": 50.0
+    },
+    "validation_result": {
+      "closed_trades": 4,
+      "max_drawdown_pct": 54.889,
+      "pnl": -2273.904,
+      "pnl_pct": -22.739,
+      "sharpe": -0.054207,
+      "trades": 11,
+      "win_rate": 100.0
+    },
+    "verdict": {
+      "reasons": [
+        "FAIL: validation PnL% -22.74% vs baseline -16.93%",
+        "PASS: training PnL% 166.84% vs baseline 42.2%",
+        "PASS: training Sharpe 0.41 vs baseline 0.26, max_dd 71.24% (threshold 40.0%)",
+        "PASS: validation Sharpe -0.05 vs baseline -0.17, max_dd 54.89% (threshold 40.0%)"
+      ],
+      "verdict": "fail"
+    }
+  },
+  {
+    "baseline_training": {
+      "max_drawdown_pct": 70.7273,
+      "pnl_pct": 42.2044,
+      "sharpe": 0.260567,
+      "closed_trades": 0,
+      "pnl": 4220.4435,
+      "trades": 6,
+      "win_rate": 0.0
+    },
+    "baseline_validation": {
+      "max_drawdown_pct": 47.9896,
+      "pnl_pct": -16.9298,
+      "sharpe": -0.169507,
+      "closed_trades": 0,
+      "pnl": -1692.9847,
+      "trades": 6,
+      "win_rate": 0.0
+    },
+    "finished_at": "2026-03-13T13:41:35.145711Z",
+    "hypothesis_id": "hyp-1773409094703-4190",
+    "id": "exp-1773409094711-4642",
+    "initial_balance": 1.0e4,
+    "interval": "15m",
+    "queued_at": "2026-03-13T13:38:14.711145Z",
+    "status": "failed",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotationVolScaled20260313",
+    "strategy_params": {},
+    "symbols": [
+      "BTCUSDC",
+      "ETHUSDC",
+      "SOLUSDC",
+      "BNBUSDC",
+      "ADAUSDC",
+      "XRPUSDC"
+    ],
+    "training_result": {
+      "max_drawdown_pct": 46.0759,
+      "pnl_pct": 326.1565,
+      "sharpe": 0.727262,
+      "closed_trades": 24,
+      "pnl": 32615.649,
+      "trades": 54,
+      "win_rate": 62.5
+    },
+    "validation_result": {
+      "max_drawdown_pct": 53.2633,
+      "pnl_pct": -20.2823,
+      "sharpe": -0.096673,
+      "closed_trades": 8,
+      "pnl": -2028.2255,
+      "trades": 20,
+      "win_rate": 62.5
+    },
+    "verdict": {
+      "reasons": [
+        "FAIL: validation PnL% -20.28% vs baseline -16.93%",
+        "PASS: training PnL% 326.16% vs baseline 42.2%",
+        "PASS: training Sharpe 0.73 vs baseline 0.26, max_dd 46.08% (threshold 40.0%)",
+        "PASS: validation Sharpe -0.1 vs baseline -0.17, max_dd 53.26% (threshold 40.0%)"
+      ],
+      "verdict": "fail"
+    }
+  }
+]
