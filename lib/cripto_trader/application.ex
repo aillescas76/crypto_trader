@@ -8,7 +8,8 @@ defmodule CriptoTrader.Application do
     children =
       [
         {Finch, name: CriptoTrader.Finch},
-        CriptoTrader.Paper.Orders
+        CriptoTrader.Paper.Orders,
+        CriptoTrader.CandleDB.Repo
       ] ++ web_children()
 
     opts = [strategy: :one_for_one, name: CriptoTrader.Supervisor]
@@ -24,7 +25,9 @@ defmodule CriptoTrader.Application do
         CriptoTraderWeb.Endpoint,
         {Task.Supervisor, name: CriptoTrader.Experiments.TaskSupervisor},
         {CriptoTrader.Experiments.Engine,
-         poll_interval_ms: 30_000, pubsub_server: CriptoTrader.PubSub}
+         poll_interval_ms: 30_000, pubsub_server: CriptoTrader.PubSub},
+        CriptoTrader.LiveSim.Manager,
+        CriptoTrader.LiveSim.BinanceStream
       ]
     end
   end
