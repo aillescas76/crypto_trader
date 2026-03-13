@@ -29,6 +29,8 @@ config :cripto_trader, CriptoTraderWeb.Endpoint,
 
 config :phoenix, :json_library, Jason
 
+config :cripto_trader, ecto_repos: [CriptoTrader.CandleDB.Repo]
+
 config :cripto_trader, CriptoTrader.CandleDB.Repo,
   database: Path.expand("../priv/repo/candles.db", __DIR__),
   pool_size: 5
