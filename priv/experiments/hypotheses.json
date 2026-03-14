@@ -40,5 +40,131 @@
     "queued_at": "2026-03-13T13:38:14.688907Z",
     "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotationVolScaled20260313",
     "text": "Volatility clustering in crypto (daily EWMA vol ACF=0.985) allows EWMA-based position sizing to reduce risk exposure during high-vol regimes while maintaining near-full capital deployment during low-vol regimes. Using EWMA vol_lookback=20d, target_vol=0.30, max_position_fraction=0.5: median position is 4854 vs 5000 fixed (cap binds 81% of days), reducing max drawdown from ~14.75% to ~9.30% (BTC-only simulation) while reducing average position by ~3%. MA gate handles 2022 bear exits; vol scaling adds protection during within-trend shocks. With base MaGatedRotation at +372.69% training, vol-scaled version expected to still beat buy-and-hold (+44.9% training) and improve Sharpe through better risk-adjusted sizing, maintaining max_drawdown < 40% on both training (pre-2025) and validation (2025+) splits."
+  },
+  {
+    "id": "hyp-1773432696243-2429",
+    "queued_at": "2026-03-13T20:11:36.228921Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotationHoldCount320260313",
+    "text": "Holding the top 3 qualifying assets (instead of top 2) reduces single-asset concentration risk and rotation churn. In choppy 2025, swapping rank 2↔3 forces unnecessary sell+buy pairs with hold_count=2; hold_count=3 keeps the 3rd-best MA-gated momentum asset, reducing friction. Expected: improved validation PnL (less churn) with slightly lower training returns (fewer compounding bets). Parameters: 20w SMA gate, 4w momentum lookback, 2w rebalance, top-3 of 6, 333/position."
+  },
+  {
+    "id": "hyp-1773435438478-1259",
+    "queued_at": "2026-03-13T20:57:18.459097Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotationSharpeRank20260313",
+    "text": "Sharpe-normalized cross-sectional momentum (4w_return / max(stdev_4w_weekly_returns, 0.02)) selects assets with more persistent trends by penalizing high-vol ephemeral momentum. Signal fires at every weekly rebalance. Step 5b-B Simulation.Runner confirms: training 166.39% (>> BnH 42.77%), validation +4.30% (>> BnH -39.74%), max drawdown 23.42%/55.03%. Parameters: 20w SMA gate, 4w Sharpe lookback with 0.02 vol floor, hold_count=2, k/position, 1w rebalance."
+  },
+  {
+    "id": "hyp-1773439305293-4076",
+    "queued_at": "2026-03-13T22:01:45.274419Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotationEntryBuffer20260313",
+    "text": "Adding a 3% entry buffer (require close > 20w_SMA * 1.03) reduces whipsaw entries at the SMA boundary in choppy markets. In 2025 validation, assets repeatedly crossed the SMA threshold creating noisy entry/exit cycles. A 3% buffer filters false breakouts while not delaying genuine bull-market entries. Base config: raw 4w return ranking, 1w rebalance, hold_count=2. Expected: improved validation margin vs MaGatedRotation base (-16.89%), with training PnL likely similar to base."
+  },
+  {
+    "id": "hyp-1773439328841-1289",
+    "queued_at": "2026-03-13T22:02:08.822380Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotationSharpeRank2w20260313",
+    "text": "Combining Sharpe-normalized ranking (4w_return / max(stdev_4w, 0.02)) with 2-week rebalance cadence. The two improvements are orthogonal: Sharpe ranking selects higher-quality assets (+11.6pp val improvement confirmed), 2w rebalance reduces rotation churn in choppy markets (+4.71pp val improvement confirmed). Expected: Training ~200-250% (lower than SharpeRank 309.15% due to fewer compounding trades), Validation ~-2% to 0% (combining both improvement axes). All other params unchanged: 20w SMA gate, hold_count=2, k/position."
+  },
+  {
+    "id": "hyp-1773443739625-0809",
+    "queued_at": "2026-03-13T23:15:39.607628Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotationSmaGate13w20260314",
+    "text": "A shorter 13-week SMA gate enables faster re-entry after bear market bottoms. The 20w gate historically re-entered March 2023; a 13w gate would re-enter ~January 2023, capturing ~2 extra months of recovery. Signal fires at 1w rebalance with raw 4w momentum ranking, hold_count=2. Expected to improve training PnL by capturing earlier recoveries; validation risk is more false entries in choppy 2025 price action near the SMA boundary."
+  },
+  {
+    "id": "hyp-1773443748654-8097",
+    "queued_at": "2026-03-13T23:15:48.635403Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotationSharpeRank3w20260314",
+    "text": "Extending the rebalance interval from 2w to 3w further reduces rotation churn in choppy markets. MaGatedRotationSharpeRank2w showed quality-filtered signals benefit non-additively from longer holding periods (1w→2w: +42.75pp validation improvement). Testing whether the quality×time interaction continues at 3w or if 2w is the optimal stopping point. Expected: lower training PnL (fewer compounding events), potentially better validation (less bi-weekly noise), slightly higher DD (1 extra week to exit downtrends). All other parameters identical to SharpeRank2w: 20w SMA gate, Sharpe-normalized ranking, hold_count=2, vol_floor=0.02."
+  },
+  {
+    "id": "hyp-1773443759148-0844",
+    "queued_at": "2026-03-13T23:15:59.130507Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.VolRegimeCadence20260314",
+    "text": "Dynamic rebalance cadence conditioned on cross-asset vol regime: rebalance weekly (1w) when short_vol/long_vol ratio < 1.3 (calm, trending market — compound faster), rebalance max every 2w when ratio >= 1.3 (elevated, choppy market — reduce churn). short_vol: stdev of 4w weekly returns averaged across all 6 symbols. long_vol: stdev of 12w weekly returns. Built on SharpeRank framework (Sharpe-normalized ranking, 20w SMA gate, hold_count=2). Based on 2025 academic evidence (Springer) showing vol-managed crypto momentum improves Sharpe from 1.12 to 1.42. Expected to outperform fixed 2w rebalance by deploying 1w compounding during the 2023-2024 trending bull market while maintaining 2w churn reduction during 2025 choppy validation."
+  },
+  {
+    "id": "hyp-1773449137684-1292",
+    "queued_at": "2026-03-14T00:45:37.667236Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotationSharpeRank4w20260314",
+    "text": "Extending the Sharpe-normalized cross-sectional momentum rebalance interval from 3w to 4w will further reduce rotation churn in choppy validation markets. The quality×time interaction has not plateaued at 3w (Val +33.81%, +50.74pp margin over BnH). Sharpe-normalized ranking selects only persistent-trend assets — no drawdown penalty for holding longer. Expected: further validation improvement beyond +50.74pp; training comparable to 3w (~151%)."
+  },
+  {
+    "id": "hyp-1773449145664-6048",
+    "queued_at": "2026-03-14T00:45:45.650530Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.VolRegimeCadence8w20260314",
+    "text": "Increasing the short_vol window from 4w to 8w in the vol-regime conditioned cadence strategy will reduce false-calm readings that trigger unnecessary weekly rebalances in choppy validation markets. The 4w window is reactive to transient vol dips; 8w smooths the estimate while preserving detection of genuine sustained-calm trending periods. Expected: fewer false 1w switches in validation → churn reduction closer to fixed 3w baseline (+50.74pp margin); training remains elevated (genuine calm bull phases still detected)."
+  },
+  {
+    "id": "hyp-1773456275354-8001",
+    "queued_at": "2026-03-14T02:44:35.334759Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotationSharpeRank13wGate3w20260314",
+    "text": "Reducing the SMA gate from 20w to 13w allows re-entry into recovering assets 5-7 weeks faster. With Sharpe-normalized ranking (4w_return / max(stdev_4w, 0.02)), false bear-rally re-entries that degraded the raw-signal 13w gate are filtered out (brief high-vol bear rallies score poorly on Sharpe). Combined with 3w rebalance, expected to beat MaGatedRotationSharpeRank3w (Val +33.81%) by capturing 2023-style recoveries faster while maintaining OOS robustness from the quality signal."
+  },
+  {
+    "id": "hyp-1773456290133-3144",
+    "queued_at": "2026-03-14T02:44:50.114257Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MomentumAlignedCadence20260314",
+    "text": "Replacing the vol-ratio cadence discriminator with a cross-asset momentum-alignment count fixes the structural flaw of VolRegimeCadence. When >=4 of 6 assets have positive 4w momentum (aligned bull), rebalance weekly to capture rotation; when <4, use 3w cadence (let Sharpe quality resolve without churn). Expected to exceed VolRegimeCadence validation margin (+11.6pp) by correctly detecting trending-calm vs ranging-calm via direction consensus rather than vol level."
+  },
+  {
+    "id": "hyp-1773460777394-9986",
+    "queued_at": "2026-03-14T03:59:37.380090Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MomentumAlignedCadence5of620260314",
+    "text": "Raising the cross-asset momentum-alignment threshold from 4/6 (67%) to 5/6 (83%) requires genuine bull consensus before triggering 1w rebalance cadence. In a 6-asset highly-correlated crypto universe, 4/6 is too permissive — choppy ranging markets frequently have 4 of 6 assets with marginally positive 4w returns simultaneously, causing false weekly rebalances that hurt validation. 5/6 (83%) should reduce cadence noise in 2025 OOS, improving validation from +13.34% toward +25-35% while accepting a modest training reduction from fewer 1w bull-market compounding events."
+  },
+  {
+    "id": "hyp-1773460784259-2691",
+    "queued_at": "2026-03-14T03:59:44.243782Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.SharpeRankAsymmetricGate20260314",
+    "text": "Decoupling the SMA gate into asymmetric entry (13w) and exit (20w) thresholds captures earlier recovery re-entries without sacrificing conservative bear protection. The 13w/13w symmetric gate (SharpeRank13wGate3w) reduced validation margin by 7.22pp vs 20w/20w because noisy false re-entries in 2025 chop degraded OOS. The asymmetric variant applies 13w for entry (responsive recovery capture) and 20w for exit (holds position through noise; conservative bear confirmation). Combined with SharpeRank filter and 3w rebalance, expected to beat baseline SharpeRank3w validation (+33.81%) by capturing 2023 recovery 5-7 weeks earlier while avoiding false bear exits."
+  },
+  {
+    "id": "hyp-1773466369470-2424",
+    "queued_at": "2026-03-14T05:32:49.451819Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.SharpeRankAsymmetricGate15wExit20260314",
+    "text": "Shortening the exit gate from 20w to 15w while keeping the 13w entry gate cures the 94.31% MaxDD from SharpeRankAsymmetricGate without destroying the 34.99% validation margin. The 15w exit forces exit 5 weeks sooner in confirmed downtrends. Expected: MaxDD drops to ~55-65%, validation stays ~30-33%."
+  },
+  {
+    "id": "hyp-1773466380600-0805",
+    "queued_at": "2026-03-14T05:33:00.578788Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MomentumAlignedCadenceAsymmetricGate20260314",
+    "text": "Combining momentum-alignment cadence (>=4/6 assets positive → 1w rebalance, else 3w) with the asymmetric SMA gate (13w entry / 20w exit) tests whether the alignment cadence disciplines the asymmetric gate from over-rotating in choppy OOS periods. Expected: captures the asymmetric gate's recovery advantage (13w entry) while alignment cadence reduces churn in 2025 choppy markets, targeting val ~30-40%."
+  },
+  {
+    "id": "hyp-1773472520862-4465",
+    "queued_at": "2026-03-14T07:15:20.841042Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.SharpeRankAsymmetricGateHalfSizeRecovery20260314",
+    "text": "SharpeRankAsymmetricGate with 50w SMA half-sizing filter: when entering a new position that qualifies on the 13w entry gate but is still below the 50w SMA (early recovery, trend unconfirmed by longer MA), allocate 2500 USDC instead of 5000. Held positions always full-sized. Expected: training MaxDD ~65% (vs 94.31%) with validation near +34.99%, by reducing capital exposure to false recoveries that fall back before the 20w exit gate fires."
+  },
+  {
+    "id": "hyp-1773472531151-0673",
+    "queued_at": "2026-03-14T07:15:31.124346Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MomentumAlignedCadenceStrength20260314",
+    "text": "MomentumAlignedCadence with continuous alignment-strength (sum of all 6 assets 4w returns) driving a 3-tier cadence: strength>0.50 -> 1w rebalance (strong bull consensus), strength>0.15 -> 2w (moderate alignment), else 3w (fragmented/choppy). Fixes the binary-correlation flaw where 4/6 count threshold proved futile. Expected: Val +18-22% (vs +13.34%) by finer discrimination of marginal alignment from genuine bull consensus, with MaxDD remaining ~26%."
+  },
+  {
+    "id": "hyp-1773479508063-6075",
+    "queued_at": "2026-03-14T09:11:48.043899Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.SharpeRankAsymmetricGateQualityThreshold20260314",
+    "text": "Asymmetric SMA gate (13w entry / 20w exit) + Sharpe-normalized momentum ranking + minimum Sharpe score threshold (>= 0.5) will reduce training MaxDD from 94.31% to ~55-70% by filtering noisy early-recovery entries, while preserving validation improvement to ~33-36% (vs 34.99% without threshold). The quality threshold blocks assets with transient volatile momentum (Sharpe < 0.5) — relief rallies with high noise — while admitting genuine persistent recoveries. Expected: PASS on both training (PnL ~175-190% vs BnH 42.2%, Sharpe > 0.26) and validation (PnL ~33-36% vs BnH -16.93%, Sharpe > -0.17)."
+  },
+  {
+    "id": "hyp-1773479519176-1067",
+    "queued_at": "2026-03-14T09:11:59.154658Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.MaGatedRotation3w20260314",
+    "text": "3-week rebalance on raw 4-week momentum rotation (20w SMA gate) will improve validation from -12.18% (2w rebalance) by reducing churn in choppy 2025 validation. The 2w→3w cadence improvement seen in SharpeNormalized (+8pp) is tested in isolation here to distinguish cadence contribution from signal quality contribution. Expected: PASS on training (PnL ~200-250% vs BnH 42.2%, Sharpe > 0.26) and marginal validation improvement toward -5% to -10% vs BnH -16.93%."
+  },
+  {
+    "id": "hyp-1773480539759-9475",
+    "queued_at": "2026-03-14T09:28:59.736906Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.SharpeRankAsymmetricGateEquityStop20260314",
+    "text": "Portfolio equity circuit breaker (halt new BUY entries when equity < 65% of initial balance) applied to SharpeRankAsymmetricGate (Val +34.99%, MaxDD 94.31%). Unlike HalfSizeRecovery (which reduced position size and cost -15pp val), the equity stop prevents capital deployment only during severe portfolio drawdowns without touching position sizes. Full-size recovery entries resume automatically once equity recovers. Expected to reduce MaxDD while preserving the +34.99% validation advantage by blocking fresh entries only in catastrophic decline sequences."
+  },
+  {
+    "id": "hyp-1773480564926-6059",
+    "queued_at": "2026-03-14T09:29:24.902281Z",
+    "strategy_module": "CriptoTrader.Strategy.Experiment.VolRegimeCadenceAdxGate20260314",
+    "text": "ADX-based cadence discriminator (portfolio-avg 14-period weekly ADX > 20 → 1w rebalance; ≤ 20 → 3w rebalance) applied to Sharpe-normalized rotation with 20w SMA gate. Fixes the structural flaw of VolRegimeCadence (val -5.31%): vol-ratio cannot distinguish calm-trending from calm-ranging; ADX measures directional STRENGTH and correctly identifies trending regimes (ADX 25+ in 2023-2024 bull) vs ranging (ADX <20 in choppy 2025). Uses 3w ranging cadence (not 2w) to align with SharpeRank3w proven val +33.81%."
   }
 ]

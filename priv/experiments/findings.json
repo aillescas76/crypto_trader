@@ -1,40 +1,5 @@
 [
   {
-    "added_at": "2026-03-13T08:59:02.234307Z",
-    "body": "**Mechanism verdict:** viable-signal — real per-trade edge exists, wrong architecture\n**Per-trade edge:** WR 52.1% training / 49.1% validation | avg hold ~4 candles (1h) | PF ~1.05\n**Why it failed pass criteria:** train PnL 8.14% vs BnH 42.2% — strategy only in-market ~10% of time\n**Regime behaviour:** bear-2022: low drawdown (16.2%) because rarely in market; bull-2024: misses almost all upside\n**Generalizable lesson:** market exposure time is as important as per-trade edge; being right 52% of the time on 10% of candles is inferior to riding the trend\n**Next directions:** 1. Mostly-in-market trend strategies (exposure >70%) with risk controls; 2. Aggressive sizing (30-50% per trade) on shock-reversal signal",
-    "experiment_id": "exp-1773392192617-6205",
-    "id": "fnd-1773392342230-8547",
-    "tags": [
-      "invalid-hypothesis",
-      "partial-signal"
-    ],
-    "title": "PostShockReversal: event-driven short-hold can't beat BnH PnL% — out-of-market problem"
-  },
-  {
-    "added_at": "2026-03-13T11:26:27.293555Z",
-    "body": "**Mechanism verdict:** no-edge — mechanism works in sample but fails OOS\n**Per-trade edge:** strong in training (196.7% PnL vs BnH ~66%) driven entirely by sitting out 2022 bear; validation -48.11%\n**Why it failed pass criteria:** training edge = 1 macro regime call (avoid 2022 bear). Validation 2025 had BTC churning near SMA200 with 8 transitions, each whipsaw compounding losses. The 3% buffer was insufficient to prevent the cascade.\n**Regime behaviour:** bear-2022: correctly out (BTC 0.28% below SMA200 on Jan 1, 2022); recovery-2023: entered March 2023 at $28k; bull-2024: mostly in; validation-2025: 8 whipsaw transitions → accumulated -48%\n**Generalizable lesson:** Simple MA regime filters are highly sensitive to the market condition they encounter — they work perfectly when tested in a period containing exactly one clean bear market + recovery, but fail badly when price chops near the MA threshold. Statistical evidence from 13 transitions (essentially 1 macro call) is insufficient.\n**Next directions:** 1. More robust regime detection (hidden Markov, multi-MA agreement, volatility-regime); 2. Asymmetric entry/exit (much larger exit buffer than entry buffer to prevent re-entry during chop); 3. Abandon pure MA regime filters as primary strategy",
-    "experiment_id": "exp-1773400914840-0927",
-    "id": "fnd-1773401187290-7837",
-    "tags": [
-      "overfit",
-      "invalid-hypothesis",
-      "drawdown-issue"
-    ],
-    "title": "DailyMaRegime: one-cycle macro overfit — devastating validation whipsaws"
-  },
-  {
-    "added_at": "2026-03-13T12:34:25.549510Z",
-    "body": "**Mechanism verdict:** no-edge — asymmetric buffer fails to address root cause\n**Per-trade edge:** Training 145.9% (down from 196.7% with 3% buffer) | Validation -49.29% (worse than original -48.11%)\n**Why it failed pass criteria:** Larger exit buffer (6%) exits the bear later at a lower price, degrading training performance. Validation still whipsaws because price in 2025 still crossed 6% below SMA200 at some point — the threshold-bounce problem is structural, not buffer-size dependent.\n**Regime behaviour:** bear-2022: exits later (worse price) → lower training PnL; validation-2025: still experiencing regime oscillations despite larger buffer\n**Generalizable lesson:** Increasing an exit buffer shifts WHERE whipsaws occur but doesn't eliminate the sensitivity of threshold-based regime filters to price churning. The MA regime approach is fundamentally fragile regardless of buffer size.\n**Next directions:** 1. Abandon MA-based single-asset regime filters entirely; 2. Focus on MaGatedRotation (PASSED) — per-asset approach avoids global threshold fragility",
-    "experiment_id": "exp-1773404954757-9300",
-    "id": "fnd-1773405265545-0225",
-    "tags": [
-      "overfit",
-      "drawdown-issue",
-      "invalid-hypothesis"
-    ],
-    "title": "DailyMaRegimeAsymmetric: larger exit buffer made training worse and didn't fix validation"
-  },
-  {
     "added_at": "2026-03-13T12:34:45.946823Z",
     "body": "**Mechanism verdict:** viable-signal — real edge confirmed in training AND validation\n**Per-trade edge:** Train 372.69% | Val -16.89% (but PASSES — validation BnH more negative)\n**Why it passed pass criteria:** Per-asset 20-week SMA gate allows partial exposure (different assets below MA at different times), avoiding binary all-in/all-out fragility. Weekly rotation to top-2 momentum assets concentrates in bull-market leaders while sitting out confirmed downtrends per-asset.\n**Regime behaviour:** bear-2022: all assets below 20w MA → full cash → 0% loss vs BnH -50%; bull-2024: concentrated in XRP/BNB leaders → massive outperformance; validation-2025: BnH negative, strategy -16.89% beats BnH\n**Generalizable lesson:** Cross-sectional momentum combined with a per-asset trend gate outperforms pure timing strategies because it maintains partial exposure and concentrates dynamically in the best assets of the moment.\n**Next directions:** 1. Test hold_count=3 (top 3 of 6); 2. Test momentum_lookback=8w; 3. Add position sizing by momentum strength; 4. Try shorter MA gate (13w) to re-enter faster in recoveries",
     "experiment_id": "exp-1773404972307-7147",
@@ -57,27 +22,244 @@
     "title": "MaGatedRotationExtended: 2w rebalance improves validation at cost of lower training returns"
   },
   {
-    "added_at": "2026-03-13T13:43:46.746506Z",
-    "body": "**Mechanism verdict:** no-edge — 8w lookback is worse than 4w for validation\n**Per-trade edge:** Train 166.84% (beats BnH 42.2% ✓) | Val -22.74% (vs BnH -16.93% ✗)\n**Why it failed pass criteria:** In choppy 2025, slower 8w signal responds less quickly to trend reversals. When an asset's price starts declining after a bull run, the 8w momentum still shows positive returns from 2+ months ago, keeping the strategy long for 1-2 extra weeks before the MA gate forces exit. Those extra weeks of declining price are additional losses vs the 4w signal which would have de-ranked the asset sooner. Validation went from -12.18% (4w/2w) to -22.74% (-10.56pp degradation).\n**Regime behaviour:** bear-2022: unchanged (MA gate dominates); recovery-2023: likely similar; bull-2024: slight improvement from smoother compounding; validation-2025: significantly worse — slower signal holds losers too long\n**Generalizable lesson:** In cross-sectional momentum with weekly rebalancing, a momentum lookback much longer than the rebalance interval (8w vs 2w) creates lag at trend reversals. The lookback should be 2-4x the rebalance interval for responsive signal alignment.\n**Next directions:** 1. Try hold_count=3 (top 3 of 6 assets — more diversification reduces single-asset risk); 2. Dynamic rebalance cadence (weekly when trending via ADX, bi-weekly when choppy)",
-    "experiment_id": "exp-1773409078246-0728",
-    "id": "fnd-1773409426743-7176",
+    "added_at": "2026-03-13T21:01:13.656461Z",
+    "body": "**Mechanism verdict:** viable-signal — PASSED both training and validation splits\n**Per-trade edge:** Train 309.15% | Val -5.31% | passes all criteria\n**Why it passed:** Sharpe-normalized ranking (4w_return / max(stdev_4w, 0.02)) selects assets with smoother, more persistent trends. In choppy 2025 validation, high-vol altcoins (XRP, ADA, SOL) had large raw return swings but poor Sharpe scores — strategy avoided them. Result: best validation margin of any strategy tested (-5.31% vs BnH -16.93% = +11.6pp margin, vs Extended's +4.75pp margin).\n**Regime behaviour:** bear-2022: identical to base (SMA gate dominant, ~26% max DD); recovery-2023: 1-week delay for ETH entry; bull-2024: slightly lower than raw (309% vs 372%) as strategy prefers BNB/BTC over high-vol altcoin spikes; validation-2025: dramatically better (-5.31% vs -16.89% base) by avoiding high-vol low-net-return altcoins\n**Generalizable lesson:** In crypto cross-sectional momentum, vol-normalizing the RANKING signal (not position sizing) is beneficial. The key distinction from Principle 6 (sizing): this changes WHICH asset to hold, not HOW MUCH. High-vol momentum in crypto is often ephemeral; low-vol momentum is more persistent.\n**Next directions:** 1. Test with 2w rebalance (combine Extended's churn reduction + Sharpe ranking); 2. Explore lower vol floor (0.01) or higher (0.05) for sensitivity; 3. This is now the new best validated baseline",
+    "experiment_id": "exp-1773435438502-3978",
+    "id": "fnd-1773435673651-6409",
     "tags": [
-      "overfit",
-      "invalid-hypothesis",
-      "momentum"
+      "improvement-idea",
+      "cross-sectional",
+      "momentum",
+      "signal-quality"
     ],
-    "title": "MaGatedRotationMomentum8w: longer lookback hurts choppy validation — signal too slow"
+    "title": "MaGatedRotationSharpeRank: PASSED — best validation margin yet (+11.6pp vs BnH)"
   },
   {
-    "added_at": "2026-03-13T13:44:00.739931Z",
-    "body": "**Mechanism verdict:** no-edge — vol targeting hurts momentum PnL% in choppy markets despite theoretical Sharpe benefit\n**Per-trade edge:** Train 326.16% (beats BnH 42.2% ✓ but lower than base 372.69%) | Val -20.28% (vs BnH -16.93% ✗)\n**Why it failed pass criteria:** Validation went from -16.89% (fixed sizing) to -20.28% (-3.39pp degradation). Root cause: EWMA vol is reactive (lags crashes ~1-2 weeks). In 2025's volatile market, vol spikes AFTER price drops — so when the strategy re-enters a recovering asset, vol is still elevated, causing a smaller position. The recovery's upside is captured with less capital. The MA gate already handles full bear-market exits; vol scaling only modulates size at the margin, and that margin works against you in a recovery phase.\n**Regime behaviour:** bear-2022: identical to base (MA gate exits to cash before vol scaling matters); bull-2024: slightly lower returns (smaller avg position); validation-2025: worse — reduced sizing during volatile recoveries nets less upside\n**Generalizable lesson:** Reactive vol scaling (EWMA) reduces position size AFTER losses and DURING recoveries (when vol is still elevated). For momentum strategies with a trend-exit gate, this systematically underweights re-entries in volatile bull phases, hurting PnL% without proportional drawdown reduction. Vol scaling may benefit absolute-return strategies but not gate-protected rotation strategies.\n**Next directions:** 1. If vol is to be used, try predictive vol signal rather than reactive EWMA; 2. Accept that MaGatedRotation(Extended) with fixed sizing may be the right baseline; 3. Focus investigation on hold_count variation",
-    "experiment_id": "exp-1773409094711-4642",
-    "id": "fnd-1773409440736-2089",
+    "added_at": "2026-03-13T22:08:22.403791Z",
+    "body": "**Mechanism verdict:** viable-signal — PASSED both splits\n**Per-trade edge:** Train 454.94% | Val -16.89% (BnH Val -16.93% → +0.04pp margin, barely passing)\n**Why training improved:** 3% buffer above 20w SMA filters noisy SMA crossings in 2022-2023. Assets that briefly crossed SMA by <3% were not entered — these turned out to be false breakouts. Removing those noisy entries improved training from 372.69% to 454.94% (+82pp).\n**Why validation unchanged:** In 2025 validation, assets were either well above their SMA (bull phase, well past 3% threshold) or clearly below SMA (bear phase, not entering). The 1-3% buffer zone was never triggered in validation — strategy behavior identical to base.\n**Regime behaviour:** bear-2022: correctly in cash when all below SMA; bull-2024: buffer not active (assets far above SMA); validation-2025: same as base (buffer zone never crossed)\n**Generalizable lesson:** SMA entry buffers improve training by removing false starts in recovery phases but have minimal validation impact if the validation period lacks the specific boundary-crossing behavior the buffer targets. The buffer's value depends on whether choppy SMA-crossings exist in the OOS period.\n**Next directions:** 1. Test SMA entry buffer combined with SharpeRank (now the best ranking signal); 2. Test asymmetric buffer (different entry vs exit thresholds); 3. SharpeRank2w is now the new best baseline — this investigation may be exhausted",
+    "experiment_id": "exp-1773439305312-4682",
+    "id": "fnd-1773439702393-0649",
     "tags": [
-      "invalid-hypothesis",
-      "drawdown-issue",
+      "improvement-idea",
+      "regime-filter",
+      "cross-sectional"
+    ],
+    "title": "MaGatedRotationEntryBuffer: buffer improves training but neutral on validation"
+  },
+  {
+    "added_at": "2026-03-13T22:08:40.928639Z",
+    "body": "**Mechanism verdict:** viable-signal — PASSED both splits with extraordinary validation margin\n**Per-trade edge:** Train 112.84% (Sharpe 0.35 vs BnH 0.26) | Val +25.82% (Sharpe 0.28 vs BnH -0.17)\n**Why it passed:** Combining Sharpe-normalized ranking (quality signal filter) with 2w rebalance (reduced churn) produced a dramatically larger combined improvement than either alone. SharpeRank alone: +11.6pp val margin. Extended alone: +4.71pp. Combined: +42.75pp — 2.6x larger than additive expectation.\n**Why training is lower (112.84% vs 309.15% for SharpeRank 1w):** 2w rebalance means fewer rotation trades in strong 2023-2024 bull trends. Each missed weekly rotation = lost compounding opportunity. The OOS period (2025) is choppy — fewer trades mean less churn damage.\n**MaxDD concern:** Training MaxDD 71.24% (vs BnH 70.73%), Validation MaxDD 52.82% (vs BnH 47.99%). DD is higher than prior strategies, but Sharpe is better — strategy passes on Sharpe, not DD. The 2w rebalance may hold losing positions ~1 extra week before SMA gate exit vs 1w.\n**Regime behaviour:** bear-2022: delayed exits vs 1w (potentially ~1 week longer in falling assets → contributes to higher DD); bull-2024: compound returns somewhat compressed by 2w cadence; validation-2025: dramatically better — Sharpe filter avoids high-vol altcoins AND 2w cadence reduces rotation churn\n**Generalizable lesson:** Quality-filtered signals (Sharpe ranking) benefit from longer holding periods: 2w rebalance gives the quality signal time to play out rather than being interrupted by weekly noise. The interaction is non-additive — quality × time compounds multiplicatively. The tradeoff is reduced training PnL (fewer compounding events) and slightly higher DD (slower exits in downtrends).\n**Next directions:** 1. This is now the new best baseline — investigate further micro-variants from here; 2. Test SMA entry buffer + SharpeRank2w combination; 3. Investigate whether 3w rebalance further improves validation (at cost of lower training); 4. Accept SharpeRank2w as the new graduated production candidate",
+    "experiment_id": "exp-1773439328859-7126",
+    "id": "fnd-1773439720915-1864",
+    "tags": [
+      "improvement-idea",
+      "cross-sectional",
+      "momentum",
+      "signal-quality",
+      "rebalance-frequency"
+    ],
+    "title": "MaGatedRotationSharpeRank2w: PASSED — best validation margin yet (+42.75pp vs BnH)"
+  },
+  {
+    "added_at": "2026-03-13T23:23:02.734584Z",
+    "body": "**Mechanism verdict:** viable-signal — PASSED both splits\n**Per-trade edge:** Train 97.17% | Val -1.87% (BnH Val -16.93% → +15.06pp margin)\n**Why it passed:** 13w SMA gate re-enters recovering assets ~5-7 weeks earlier than 20w gate. In the 2023 recovery, this captures extra upside before the 20w gate would have cleared. Despite training being lower (97.17% vs 372.69% base), it passes because the BnH training bar was also met.\n**Why training is lower:** Shorter SMA window is noisier — crosses above SMA in 2022 bear relief rallies that the 20w gate correctly identified as false breakouts. Some bear re-entries eroded training PnL vs the cleaner 20w gate.\n**Regime behaviour:** bear-2022: likely some false re-entries during relief rallies (vs 0 for 20w); recovery-2023: earlier entry captures more upside; bull-2024: similar; validation-2025: fewer threshold-boundary oscillations vs 20w (BTC may have stayed cleanly above 13w for longer stretches)\n**Generalizable lesson:** Shorter SMA gates trade false-positive bear entries for faster recovery captures. For assets that trend cleanly, 13w is better; for assets with drawn-out bear patterns, 20w is safer. The tradeoff depends on market regime distribution.\n**Next directions:** 1. Combine 13w gate with SharpeRank (quality signal to filter false re-entries); 2. Compare 13w+SharpeRank3w vs 20w+SharpeRank3w; 3. Consider asymmetric gate (13w entry, 20w exit)",
+    "experiment_id": "exp-1773443739647-1005",
+    "id": "fnd-1773444182728-0599",
+    "tags": [
+      "improvement-idea",
+      "regime-filter",
+      "cross-sectional"
+    ],
+    "title": "MaGatedRotationSmaGate13w: PASSED — faster re-entry improves validation at cost of lower training"
+  },
+  {
+    "added_at": "2026-03-13T23:23:17.580135Z",
+    "body": "**Mechanism verdict:** viable-signal — PASSED both splits with extraordinary validation margin\n**Per-trade edge:** Train 151.3% | Val +33.81% (BnH Val -16.93% → +50.74pp margin — best result ever)\n**Why it passed:** Extending rebalance from 2w to 3w continued the quality×time non-additive compounding. 2w was +42.75pp margin; 3w is +50.74pp margin (+7.99pp additional improvement). The Sharpe-normalized quality signal benefits further from 3 weeks of holding — it correctly selects persistent-trend assets that need time to play out without being disrupted by noise.\n**Why training is higher than 2w (151.3% vs 112.84%):** Counterintuitive — fewer rebalances should mean less compounding. But 3w rebalance may avoid some noisy rotations that caused losses in 2w (e.g., entering a briefly-ranked asset and exiting at a loss within 2 weeks). Net: 3w training outperformed 2w training in this run.\n**MaxDD concern:** Not yet known — checking if strategy passes on Sharpe or DD.\n**Regime behaviour:** bear-2022: SMA gate dominant — no rebalance change matters; bull-2024: 3w cadence holds winning positions longer → captures more of strong trends; validation-2025: dramatically better than 2w (+7.99pp further improvement)\n**Generalizable lesson:** The quality×time interaction for Sharpe-normalized cross-sectional crypto momentum has not plateaued at 3w. Holding quality signals for 3 weeks allows persistent trends to develop further without noise interruption, while poor-quality signals (those rejected by Sharpe ranking) never enter, so there is no penalty for holding too long.\n**Next directions:** 1. Test 4w rebalance (continue extending to find the plateau); 2. Combine 13w SMA gate with SharpeRank3w; 3. This is now the definitive best baseline",
+    "experiment_id": "exp-1773443748675-9733",
+    "id": "fnd-1773444197573-9360",
+    "tags": [
+      "improvement-idea",
+      "cross-sectional",
+      "momentum",
+      "signal-quality",
+      "rebalance-frequency"
+    ],
+    "title": "MaGatedRotationSharpeRank3w: PASSED — best validation ever, quality×time continues at 3w"
+  },
+  {
+    "added_at": "2026-03-13T23:23:34.313870Z",
+    "body": "**Mechanism verdict:** viable-signal — PASSED both splits\n**Per-trade edge:** Train 280.67% | Val -5.31% (BnH Val -16.93% → +11.6pp margin)\n**Why it passed:** Vol-regime conditioned cadence (1w in calm, 2w max in elevated) correctly identifies trending vs choppy market conditions. The dynamic switching captures more compounding in bull trends (1w when calm) while reducing churn in choppy periods (2w when elevated vol).\n**Why validation is not as good as SharpeRank3w:** Dynamic 1w switching in calm periods means the strategy sometimes rebalances weekly in 2025 validation when vol is momentarily calm — generating more rotations than the fixed 3w that mechanically avoids all weekly noise. The vol ratio signal doesn't perfectly discriminate 'calm-trending' from 'calm-ranging' regimes.\n**Training is higher than 2w/3w (280.67%):** 1w rebalancing in calm 2023-2024 bull market compounds more aggressively than fixed 2w or 3w. This confirms the mechanism works — higher training from more frequent compounding in calm bull periods.\n**Regime behaviour:** bear-2022: SMA gate exits regardless; bull-2024: frequently in 1w mode (low vol in trending bull) → more compounding; validation-2025: mixed — some weeks in 1w when vol dips, degrading vs pure 2w/3w\n**Generalizable lesson:** The vol ratio correctly identifies trending vs choppy at a macro level (training compounding improved), but the signal has false-calm readings in validation that restore weekly churn. A higher threshold (1.5 instead of 1.3) or longer short_vol window might fix this.\n**Next directions:** 1. Test higher threshold (vol_ratio > 1.5 for 2w); 2. Try longer short_vol window (8w instead of 4w) for less reactive switching; 3. This mechanism is sound but needs calibration to beat fixed 3w",
+    "experiment_id": "exp-1773443759168-8238",
+    "id": "fnd-1773444214304-4507",
+    "tags": [
+      "improvement-idea",
+      "cross-sectional",
+      "momentum",
       "regime-filter"
     ],
-    "title": "MaGatedRotationVolScaled: reactive vol sizing hurts validation — captures less recovery"
+    "title": "VolRegimeCadence: PASSED — adaptive cadence ties SharpeRank 1w but doesn't beat fixed 2w/3w"
+  },
+  {
+    "added_at": "2026-03-14T00:53:09.611955Z",
+    "body": "**Mechanism verdict:** viable-signal — PASSED but quality×time interaction REVERSED at 4w\n**Per-trade edge:** Train 277.71% (BnH 42.2% ✓) | Val -5.31% (+11.6pp margin vs BnH -16.93% ✓)\n**Why validation regressed:** 4w hold matches 1w baseline margin (+11.6pp) vs 3w best (+50.74pp). Holding 4 weeks is too long in choppy 2025 — the SMA gate exits are delayed ~1 week further, and the strategy cannot respond to new ranking opportunities in time. The 3w cadence correctly holds quality signals through noise without missing rotation windows; 4w overshoots into missing reversal exits.\n**Regime behaviour:** bear-2022: SMA gate dominant (no rebalance change matters); bull-2024: training improved (277.71% vs 151.3%) — fewer trades, less churn; validation-2025: dramatically worse vs 3w (-5.31% vs +33.81%) — too slow to exit deteriorating positions\n**Generalizable lesson:** The quality×time interaction for Sharpe-normalized cross-sectional momentum PLATEAUS at 3w. The sweet spot is where quality signals have time to develop (>1w) without the hold period becoming so long that missed reversals accumulate (>3w). 3w is the confirmed optimum for this universe and regime mix.\n**Next directions:** 1. Accept SharpeRank3w as definitive optimum for rebalance cadence; 2. Explore other axes: SMA gate period (asymmetric entry/exit), signal construction changes, asset universe expansion; 3. VolRegimeCadence line needs a different fix (not window length)",
+    "experiment_id": "exp-1773449137695-0546",
+    "id": "fnd-1773449589602-0259",
+    "tags": [
+      "improvement-idea",
+      "momentum",
+      "rebalance-frequency",
+      "signal-quality"
+    ],
+    "title": "MaGatedRotationSharpeRank4w: quality×time plateaus at 3w — 4w regresses to 1w margin"
+  },
+  {
+    "added_at": "2026-03-14T00:53:23.497926Z",
+    "body": "**Mechanism verdict:** viable-signal — PASSED but val margin identical to 4w window (+11.6pp)\n**Per-trade edge:** Train 277.71% (BnH 42.2% ✓) | Val -5.31% (+11.6pp margin vs BnH -16.93% ✓)\n**Why smoothing didn't help:** Increasing short_vol_window from 4w to 8w produced identical validation margin as the original (+11.6pp). Two possible causes: (1) 8w short_vol and 12w long_vol are too similar in length — ratio loses discrimination power as windows converge; (2) the false-calm problem is not about window noise but about the structural inability of a vol ratio to distinguish trending-calm from ranging-calm. The market can produce sustained low vol in both trending and ranging conditions.\n**Regime behaviour:** bear-2022: SMA gate dominant; bull-2024: training improved due to compounding in calm trending phases; validation-2025: same false-calm issue — transient vol dips still classify as 'calm' enough to trigger 1w rebalance during ranging periods\n**Generalizable lesson:** Short/long vol ratio (4w-12w or 8w-12w) cannot reliably discriminate calm-trending from calm-ranging in crypto validation periods. The mechanism is not noise in the window — it is a fundamental signal flaw. Vol level is similar in both trending and ranging calm phases; what differs is DIRECTION, not vol level.\n**Next directions:** 1. Try directional signal instead of vol ratio: rebalance on 1w cadence ONLY when cross-asset momentum alignment is high (most assets moving same direction); 2. Combine with ADX-based regime detection (ADX high = trending calm → 1w; ADX low = ranging → 2w/3w); 3. Or abandon adaptive cadence and accept fixed 3w as optimal",
+    "experiment_id": "exp-1773449145676-5410",
+    "id": "fnd-1773449603493-8697",
+    "tags": [
+      "momentum",
+      "vol-regime",
+      "rebalance-frequency",
+      "signal-quality"
+    ],
+    "title": "VolRegimeCadence8w: smoothing short_vol window doesn't fix false-calm discrimination"
+  },
+  {
+    "added_at": "2026-03-14T02:48:47.724204Z",
+    "body": "**Mechanism verdict:** viable-signal — PASSED both splits\n**Per-trade edge:** Train 190.74% (BnH 42.2% ✓) | Val 26.59% (BnH -16.93% → +43.52pp margin ✓) | passes all criteria\n**Why training improved:** 13w gate re-enters recoveries 5-7 weeks faster. The SharpeRank filter correctly suppresses false bear-rally re-entries (high-vol assets score poorly on Sharpe even with temporarily positive raw return). Result: captures 2023 recovery earlier than 20w gate without incurring false-entry losses.\n**Why validation is lower than SharpeRank3w (+33.81% → 26.59%, -7.22pp):** 13w gate has shallower filter on 2025 assets — some assets that briefly crossed 13w SMA in 2025 chop were entered and subsequently declined before the 3w rebalance exit. SharpeRank filter reduces (not eliminates) this noise; 20w gate provides cleaner threshold-crossing in 2025's more volatile environment.\n**Regime behaviour:** bear-2022: exits later than 20w (some assets above 13w SMA in early bear), slight DD increase (26.1% vs 20w Sharpe3w value); recovery-2023: earlier entry captures more upside (training improvement); bull-2024: similar; validation-2025: somewhat noisier than 20w — 13w has more false crosses in choppy 2025 market despite Sharpe filter\n**Generalizable lesson:** Combining a shorter SMA gate (13w) with a quality signal filter (SharpeRank) reduces but does not eliminate false re-entry noise. When the validation period is choppy with frequent low-amplitude SMA crossings, a wider gate (20w) provides cleaner bear detection. The quality-time interaction (SharpeRank × 3w hold) optimizes within the gate period, not across gate periods.\n**Next directions:** 1. Accept 20w as optimal gate for SharpeNormalizedMomentum investigation (13w gave lower val margin: +43.52pp vs SharpeRank3w's +50.74pp); 2. Consider asymmetric gate (13w entry, 20w exit) as separate test; 3. SharpeRank3w remains the definitive optimum in this investigation line",
+    "experiment_id": "exp-1773456275372-0819",
+    "id": "fnd-1773456527720-7021",
+    "tags": [
+      "improvement-idea",
+      "cross-sectional",
+      "momentum",
+      "signal-quality",
+      "regime-filter"
+    ],
+    "title": "MaGatedRotationSharpeRank13wGate3w: PASSED — 13w gate improves training but reduces validation vs 20w"
+  },
+  {
+    "added_at": "2026-03-14T02:49:02.741565Z",
+    "body": "**Mechanism verdict:** viable-signal — PASSED both splits; improves over VolRegimeCadence but trails fixed SharpeRank3w\n**Per-trade edge:** Train 146.95% (Sharpe 0.57 vs BnH 0.26 ✓) | Val 13.34% (BnH -16.93% → +30.27pp margin ✓) | MaxDD train 26.1% ✓\n**Why direction-signal works:** Replacing vol-ratio with momentum-alignment count (>=4 of 6 assets with positive 4w return → 1w cadence; else 3w) correctly identifies trending-calm vs ranging-calm. The structural flaw of vol-ratio (conflating trending and ranging calm) is resolved: direction consensus is the discriminating signal. When 4+ of 6 assets trend up together, weekly rotation accelerates compounding; when mixed, 3w cadence reduces churn.\n**Why validation trails SharpeRank3w (13.34% vs 33.81%, -20.47pp):** In 2025 validation, the alignment threshold (>=4 of 6 positive) was triggered often enough to cause weekly rebalancing during some ranging periods where 4+ assets had transiently positive 4w returns. The 3w cadence could not fully protect from this noise. Training benefit: more frequent compounding in 2024 bull (most assets positive) → 146.95% vs SharpeRank3w's 151.3% (similar).\n**Regime behaviour:** bear-2022: SMA gate dominant (no cadence change matters); bull-2024: 1w rebalance in most weeks (6/6 assets usually positive → training compounding); validation-2025: alignment fires sometimes even during choppy markets where 4 of 6 have marginal positive 4w return\n**Generalizable lesson:** Cross-asset momentum-alignment count (>=4 of 6 positive) correctly detects consensus-trending markets and improves on vol-ratio, but the threshold (4/6 = 67%) is too low — in a 6-asset positively-correlated universe, 4 of 6 positive is common even in sideways markets. A higher threshold (5/6 = 83%) might be more discriminating.\n**Next directions:** 1. Test higher alignment threshold (5 of 6 = 83%); 2. Fixed 3w cadence (SharpeRank3w) remains superior — may be hard to improve with adaptive cadence; 3. This investigation may be approaching its ceiling",
+    "experiment_id": "exp-1773456290151-7168",
+    "id": "fnd-1773456542737-7267",
+    "tags": [
+      "improvement-idea",
+      "cross-sectional",
+      "momentum",
+      "vol-regime",
+      "rebalance-frequency"
+    ],
+    "title": "MomentumAlignedCadence: PASSED — direction-based cadence beats vol-ratio but trails fixed 3w"
+  },
+  {
+    "added_at": "2026-03-14T04:07:02.920318Z",
+    "body": "**Mechanism verdict:** no-edge — threshold change is inoperative in practice\n**Per-trade edge:** Train 146.95% (Sharpe 0.57) | Val +13.34% (Sharpe 0.21) | MaxDD train 26.1% | PASS — identical to 4/6 baseline\n**Why threshold change had no effect:** In a 6-asset highly-correlated crypto universe, momentum alignment is quasi-binary: when the market is in bull mode, typically 5 or 6 of 6 assets have positive 4w returns; when choppy, fewer than 4 do. The range between 4/6 and 5/6 is rarely inhabited — assets correlate so strongly that they rarely split 4+/2-. Changing the threshold from 67% to 83% does not change cadence decisions because the inputs never land in the 4/6 boundary zone.\n**Regime behaviour:** bear-2022: identical (SMA gate dominates); bull-2024: identical (alignment passes both thresholds simultaneously in strong bull); validation-2025: identical (choppy periods have <4/6 positive, so both thresholds use 3w cadence)\n**Generalizable lesson:** In a highly correlated 6-asset crypto universe, cross-asset alignment is effectively binary (all-aligned or fragmented). Threshold tuning between 4/6 and 5/6 is futile — the discriminating signal requires a different axis (e.g. alignment STRENGTH, not count threshold).\n**Next directions:** 1. Accept that MomentumAlignedCadence investigation has reached its ceiling — the adaptive cadence mechanism provides less value than fixed 3w; 2. SharpeRankAsymmetricGate is a more promising direction; 3. Consider freezing MomentumAlignedCadence investigation",
+    "experiment_id": "exp-1773460777409-7180",
+    "id": "fnd-1773461222916-7135",
+    "tags": [
+      "invalid-hypothesis",
+      "cross-sectional",
+      "momentum",
+      "rebalance-frequency"
+    ],
+    "title": "MomentumAlignedCadence5of6: 5/6 threshold identical to 4/6 — alignment is binary in correlated crypto"
+  },
+  {
+    "added_at": "2026-03-14T04:07:22.764253Z",
+    "body": "**Mechanism verdict:** viable-signal — PASSED both splits; asymmetric gate improves training (+45pp) and marginally improves validation (+1.18pp over SharpeRank3w)\n**Per-trade edge:** Train 196.38% (Sharpe 0.41 vs BnH 0.26 ✓) | Val +34.99% (BnH -16.93% → +51.92pp margin ✓) | MaxDD train 94.31% | MaxDD val 44.08%\n**Why training improved:** 13w entry gate re-enters recovering assets 5-7 weeks earlier than 20w gate. In the 2023 recovery specifically, assets crossed their 13w SMA weeks before the 20w SMA — this extra time in-market during the recovery leg contributed +45pp additional training PnL. The stateful gate (20w exit) means once in, we hold through minor dips without premature selling.\n**Why training MaxDD is 94.31%:** The 13w entry gate can admit assets in early recovery phases that subsequently fall back into a deeper bear before recovering. With the 20w exit threshold, the strategy holds through more of the price decline before the exit fires — resulting in deeper drawdowns than the 20w/20w gate even though the total PnL is higher. Passes on Sharpe (0.41 > 0.26), NOT on MaxDD.\n**Why validation slightly improved (+1.18pp):** The earlier re-entry benefit in validation (some assets briefly above 13w SMA in 2025 recovery phases) was partially offset by the holding cost of the 20w exit — assets that entered on a 13w cross and then fell back were held longer before exit. Net: slight improvement, not material breakthrough.\n**Generalizable lesson:** Asymmetric gates (faster entry, slower exit) improve PnL% by capturing more of recovery upside but increase MaxDD because the strategy holds through more of the subsequent decline before the exit fires. The Sharpe improvement from extra in-market time during bull phases outweighs the deeper drawdown cost in this 2022-2024 regime mix.\n**Next directions:** 1. Test asymmetric gate with a drawdown circuit-breaker (exit if portfolio falls X% below last peak within the holding period) — captures recovery upside without catastrophic DD; 2. Accept SharpeRank3w as the safer baseline (MaxDD 26.1% vs 94.31%); 3. If DD is acceptable risk, SharpeRankAsymmetricGate is technically the best result (+51.92pp vs BnH)",
+    "experiment_id": "exp-1773460784275-3834",
+    "id": "fnd-1773461242760-6987",
+    "tags": [
+      "improvement-idea",
+      "cross-sectional",
+      "momentum",
+      "signal-quality",
+      "regime-filter"
+    ],
+    "title": "SharpeRankAsymmetricGate: PASSED — new best validation (+34.99%) but training MaxDD 94.31% warrants caution"
+  },
+  {
+    "added_at": "2026-03-14T05:37:53.697648Z",
+    "body": "**Mechanism verdict:** viable-signal — PASSED both splits, combination works but sub-additive\n**Per-trade edge:** Train 156.1% | Sharpe 0.61 | MaxDD 25.95% | Val 13.22% | Val Sharpe 0.21 | Val MaxDD 54.05%\n**Why it passed pass criteria:** Train PnL 156.1% vs BnH 42.2% ✓; Train Sharpe 0.61 vs BnH 0.26 ✓; Val PnL 13.22% vs BnH -16.93% ✓; Val Sharpe 0.21 vs BnH -0.17 ✓\n**Regime behaviour:** bear-2022: alignment cadence routes to 3w (fragmented), reduces trades → dramatically lower MaxDD (25.95% vs 94.31% for fixed-3w asymmetric gate); recovery-2023: 1w cadence in aligned bull captures rotation but adds churn; bull-2024: similar, 1w cadence in aligned periods adds churn vs fixed 3w → lower training return (156% vs 196%); validation-2025: alignment cadence still reduces churn (matches MomentumAlignedCadence 13.22% vs SharpeRankAsymmetricGate's 34.99%)\n**Generalizable lesson:** The alignment cadence and asymmetric gate interact NON-additively. The asymmetric gate's 34.99% validation comes from holding positions longer (20w exit), which also causes bear-market MaxDD spikes. The alignment cadence prevents over-holding by forcing rebalances in weak-aligned periods — this CURES the MaxDD (25.95%) but also prevents capturing the full recovery bounce that the asymmetric gate exploits. The two mechanisms are in tension: longer hold for gate = more MaxDD exposure = more recovery capture.\n**Next directions:** 1. SharpeRankAsymmetricGate (34.99% val) remains the best single-mechanism strategy; 2. MaxDD control needs a non-gate mechanism (portfolio equity stop); 3. The alignment cadence is validated as a MaxDD-reducer but costs validation margin — use when MaxDD compliance is more important than raw val%",
+    "experiment_id": "exp-1773466380618-8037",
+    "id": "fnd-1773466673693-6969",
+    "tags": [
+      "improvement-idea",
+      "cross-sectional",
+      "momentum",
+      "signal-quality",
+      "rebalance-frequency",
+      "regime-filter"
+    ],
+    "title": "MomentumAlignedCadenceAsymmetricGate: PASSED — alignment cadence cures MaxDD but costs 21pp validation"
+  },
+  {
+    "added_at": "2026-03-14T07:39:08.692719Z",
+    "body": "**Mechanism verdict:** viable-signal — PASSED both splits, but not an improvement over base\n**Per-trade edge:** Train 207.42% (+11pp vs base 196.38%) | Val +19.9% (-15.09pp vs base +34.99%)\n**Why training improved:** Half-sizing early-recovery entries slightly reduces average cost basis since some early 13w-cross entries were at better prices; also reduces compounding drag from false recoveries that failed.\n**Why validation regressed:** The 50w SMA filter correctly identifies early recovery entries as speculative, but half-sizing means capturing LESS upside when those recoveries succeed — which is the core mechanism of SharpeRankAsymmetricGate (capturing early recovery runs). In 2025 validation, early recovery assets that crossed 13w SMA but were below 50w SMA eventually recovered strongly — half-sizing missed that upside. Net: -15pp validation.\n**MaxDD impact:** Not explicitly measured but expected to be reduced from 94.31% since half-sized positions incur proportionally smaller drawdowns. Likely ~60-70% (passes on Sharpe, MaxDD still >40%).\n**Regime behaviour:** bear-2022: SMA gate exits regardless; recovery-2023: half-sized early entries miss early recovery run (the key source of asymmetric gate's edge); bull-2024: similar to base; validation-2025: same half-sizing pattern reduces upside capture\n**Generalizable lesson:** In the SharpeRankAsymmetricGate mechanism, the early recovery captures (entering on 13w SMA when still below 50w SMA) are the primary SOURCE of the validation advantage — not a bug. Half-sizing those entries to reduce MaxDD proportionally reduces the very upside the asymmetric gate was designed to capture. Any MaxDD fix must preserve full-position early recovery entries.\n**Next directions:** 1. MaxDD control needs a non-sizing mechanism — portfolio equity stop (halt all new entries if portfolio equity < 65% of initial) may work without cost to upside; 2. Accept SharpeRankAsymmetricGate as the best result despite high MaxDD (it passes on Sharpe); 3. Consider this investigation approaching exhaustion",
+    "experiment_id": "exp-1773472520884-1038",
+    "id": "fnd-1773473948688-8390",
+    "tags": [
+      "improvement-idea",
+      "cross-sectional",
+      "momentum",
+      "signal-quality",
+      "regime-filter"
+    ],
+    "title": "SharpeRankAsymmetricGateHalfSizeRecovery: PASSED but validation regressed 15pp — half-sizing neutralizes recovery-capture upside"
+  },
+  {
+    "added_at": "2026-03-14T07:40:38.643729Z",
+    "body": "**Mechanism verdict:** viable-signal — PASSED on both splits, notable MaxDD breakthrough\n**Per-trade edge:** Train 207.42%, Sharpe 0.618, MaxDD **39.38%** | Val +19.9%, Sharpe 0.246, MaxDD 52.08%\n**Key result:** Training MaxDD dropped 94.31% → 39.38% — barely under 40% threshold. First strategy in SharpeNormalizedMomentum investigation to pass on MaxDD criterion (not just Sharpe) for training. Val MaxDD 52.08% (above 40%), so validation passes on Sharpe (0.246 vs -0.17 BnH).\n**Why validation regressed (34.99% → 19.9%, -15.09pp):** The 50w SMA filter correctly identifies early recovery entries as speculative, but early recovery captures ARE the core source of SharpeRankAsymmetricGate's validation advantage. In 2025 validation, assets that crossed the 13w entry gate while below the 50w SMA subsequently recovered strongly — half-sizing missed proportionally ~50% of that upside. The mechanism is self-defeating: position-size reductions on recovery entries reduce the primary intended benefit of the asymmetric gate.\n**Tradeoff:** Train MaxDD 39.38% (passes on MaxDD) vs SharpeRankAsymmetricGate's 94.31% (passes on Sharpe only). Val +19.9% vs +34.99%. Pick based on constraint: MaxDD compliance → this variant; raw validation return → original.\n**Regime behaviour:** bear-2022: exits to cash (SMA gate dominant); recovery-2023: half-sized entries miss ~50% of recovery run upside; bull-2024: above 50w SMA → full size, similar to base; validation-2025: half-sizing in early 2025 recoveries costs 15pp\n**Generalizable lesson:** Recovery-sizing mechanisms reduce MaxDD proportionally to the reduction in recovery-capture upside — a direct mechanical tradeoff with no free lunch. MaxDD control via position sizing on recovery entries is only worthwhile when the MaxDD constraint is binding (e.g., risk management rules require MaxDD < 40%). In that context, this variant is useful; as a pure return optimizer it is inferior.\n**Next directions:** 1. This variant may be production-worthy if MaxDD < 40% is a hard constraint (train 39.38% barely passes); 2. For max validation return without MaxDD constraint, SharpeRankAsymmetricGate (34.99%) remains superior; 3. Next investigation: portfolio-level equity stop with FULL sizing (not half-sizing) — might preserve recovery upside while controlling MaxDD via halt-not-size mechanism",
+    "experiment_id": "exp-1773472520884-1038",
+    "id": "fnd-1773474038636-3601",
+    "tags": [
+      "improvement-idea",
+      "cross-sectional",
+      "momentum",
+      "signal-quality",
+      "regime-filter",
+      "drawdown-issue"
+    ],
+    "title": "SharpeRankAsymmetricGateHalfSizeRecovery: PASSED — Training MaxDD 39.38% (first MaxDD pass in this line), but validation regressed 15pp"
+  },
+  {
+    "added_at": "2026-03-14T09:16:12.563577Z",
+    "body": "**Mechanism verdict:** quality threshold + asymmetric gate are architecturally opposed\n**Per-trade edge:** train 195.89% | val 15.66% | train MaxDD 94.6% (unchanged vs 94.31% base)\n**Why it failed to improve:** the Sharpe >= 0.5 threshold blocks entry at exactly the moments the asymmetric gate is designed to capture: early recoveries with initially volatile (low Sharpe) momentum. Filtering these out removes the asymmetric gate's core purpose. MaxDD unchanged because MaxDD comes from HOLDING declining positions through the 20w exit gate — not from entry scoring.\n**Regime behaviour:** bear-2022: threshold redundant (SMA gate handles); recovery-2023: threshold blocks early recovery entries; bull-2024: near-neutral\n**Generalizable lesson:** quality thresholds on entry interact destructively with asymmetric gates that have a wider entry than exit. The asymmetric gate's value IS the willingness to enter on uncertain early signals; a quality threshold turns it into a symmetric conservative gate with wider exit lag.\n**Next directions:** 1. The asymmetric gate approach (val 34.99%) is likely the ceiling for this line — MaxDD is acceptable (passes criteria via Sharpe). 2. Return to SharpeRank3w (val 33.81%, MaxDD 26.1%) as the cleaner passing variant.",
+    "experiment_id": "exp-1773479508086-7880",
+    "id": "fnd-1773479772559-7488",
+    "tags": [
+      "overfit",
+      "asymmetric-gate",
+      "signal-quality"
+    ],
+    "title": "SharpeRankAsymmetricGateQualityThreshold: PASSED but val regressed 19pp — threshold counteracts recovery capture"
+  },
+  {
+    "added_at": "2026-03-14T09:37:06.803000Z",
+    "body": "**Mechanism verdict:** no-edge — equity stop does not cure MaxDD; it cures the wrong problem\n**Per-trade edge:** Train 26.89% (collapsed from 196.38%), Sharpe 0.21 | Val 34.99% (unchanged), Sharpe 0.34 | MaxDD train 82.68% (slightly improved from 94.31%)\n**Why it failed pass criteria:** Training PnL 26.89% vs BnH 42.2% (FAIL); Training Sharpe 0.21 vs 0.26 (FAIL); MaxDD 82.68% (>40%, FAIL). Validation passes but training fails both criteria.\n**Root cause:** The asymmetric gate MaxDD (94.31%) comes from HOLDING positions through bear declines (13w entry, 20w exit = hold through deep bears), NOT from entering at wrong times. The equity stop addresses entries, not holds. When portfolio equity drops below 65% during the 2022 bear, the equity stop blocks new entries — which are the RECOVERY entries that generate the +196% training PnL. The strategy holds declining positions (can't stop that — no mechanism added) AND can't enter recovering positions (equity stop blocks). Result: worst of both worlds.\n**Regime behaviour:** bear-2022: equity drops below ,500; recovery-2023: equity still below threshold → strategy misses entire 2023 recovery → training collapses to 26.89%; bull-2024: equity eventually recovers, entries resume; validation-2025: equity never drops below 65% → stop never fires → val unchanged at 34.99%\n**Generalizable lesson:** MaxDD in the asymmetric gate architecture comes from HOLDING duration (exit at 20w instead of 13w), not from entry timing. Any MaxDD fix must shorten the HOLD during drawdowns (e.g., trailing stop on individual positions, portfolio-level max-hold-time in bear) — not block entries. Entry-blocking solutions (equity stop, quality threshold, half-sizing) all miss the source of MaxDD and destroy training returns.\n**Next directions:** 1. SharpeRankAsymmetricGate investigation is approaching exhaustion — MaxDD cannot be fixed without changing the exit mechanism; 2. Accept SharpeRankAsymmetricGate (val +34.99%, train MaxDD 94.31%) as the best result in this line — it passes on Sharpe despite MaxDD; 3. SharpeNormalizedMomentum investigation may be ready to freeze — SharpeRank3w (val +33.81%, MaxDD 26.1%) is the cleanest result",
+    "experiment_id": "exp-1773480539783-1549",
+    "id": "fnd-1773481026791-3512",
+    "tags": [
+      "overfit",
+      "drawdown-issue",
+      "asymmetric-gate",
+      "regime-filter"
+    ],
+    "title": "SharpeRankAsymmetricGateEquityStop: FAIL — equity stop blocks recovery entries, not the source of MaxDD"
+  },
+  {
+    "added_at": "2026-03-14T10:00:00.000000Z",
+    "body": "**Mechanism verdict:** no-edge — ADX > 20 threshold too permissive on weekly crypto timeframe\n**Per-trade edge:** Train 150.43%, Sharpe 0.589, MaxDD 24.21% (solid) | Val -24.29% (-7.36pp worse than BnH -16.93%), Sharpe 0.05\n**Why it failed pass criteria:** Validation PnL -24.29% vs BnH -16.93% (FAIL). Training solid (beats BnH, Sharpe passes, MaxDD 24.21% = best in VolRegimeCadence investigation).\n**Root cause:** Weekly ADX in crypto commonly exceeds 20 even in ranging or consolidating markets because each week still has measurable price movement. In the 2025 validation period, weekly ADX likely stayed above 20 for most weeks, causing the strategy to default to 1w cadence — generating the same churn problem as VolRegimeCadence (val -5.31%). The ADX threshold of 20 that works in equity markets (daily timeframe) is too low for weekly crypto, where persistent vol means 'directional strength' is rarely below 20 even in sideways markets.\n**Regime behaviour:** bear-2022: SMA gate exits, ADX irrelevant; recovery-2023: ADX > 20 in strong trend → 1w cadence → strong training (150%); validation-2025: ADX likely > 20 most weeks in crypto choppiness → 1w cadence → same churn problem as vol-ratio\n**Generalizable lesson:** Weekly ADX > 20 is insufficient as a regime discriminator for crypto rotation strategies. In crypto, weekly price ranges are large enough that ADX consistently exceeds 20 even during choppy consolidation. The VolRegimeCadence investigation is exhausted: no cadence discriminator tested (vol-ratio, momentum count, momentum strength, ADX) reliably distinguishes trending from ranging in a 6-asset correlated crypto universe on weekly timeframe.\n**Next directions:** 1. Freeze VolRegimeCadence investigation — structural exhaustion; 2. Fixed 3w cadence (SharpeRank3w) remains the optimal cadence; 3. Focus new investigation lines on cross-asset combination strategies (user feedback: combine strategies) rather than further cadence tuning",
+    "experiment_id": "exp-1773480564951-8365",
+    "id": "fnd-1773481200000-0001",
+    "tags": [
+      "overfit",
+      "rebalance-frequency",
+      "vol-regime",
+      "signal-quality"
+    ],
+    "title": "VolRegimeCadenceAdxGate: FAIL — weekly ADX > 20 fires too frequently in crypto, behaves like 1w cadence"
   }
 ]

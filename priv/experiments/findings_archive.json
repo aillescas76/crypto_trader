@@ -1,0 +1,112 @@
+[
+  {
+    "added_at": "2026-03-13T08:59:02.234307Z",
+    "body": "**Mechanism verdict:** viable-signal \u2014 real per-trade edge exists, wrong architecture\n**Per-trade edge:** WR 52.1% training / 49.1% validation | avg hold ~4 candles (1h) | PF ~1.05\n**Why it failed pass criteria:** train PnL 8.14% vs BnH 42.2% \u2014 strategy only in-market ~10% of time\n**Regime behaviour:** bear-2022: low drawdown (16.2%) because rarely in market; bull-2024: misses almost all upside\n**Generalizable lesson:** market exposure time is as important as per-trade edge; being right 52% of the time on 10% of candles is inferior to riding the trend\n**Next directions:** 1. Mostly-in-market trend strategies (exposure >70%) with risk controls; 2. Aggressive sizing (30-50% per trade) on shock-reversal signal",
+    "experiment_id": "exp-1773392192617-6205",
+    "id": "fnd-1773392342230-8547",
+    "tags": [
+      "invalid-hypothesis",
+      "partial-signal"
+    ],
+    "title": "PostShockReversal: event-driven short-hold can't beat BnH PnL% \u2014 out-of-market problem"
+  },
+  {
+    "added_at": "2026-03-13T11:26:27.293555Z",
+    "body": "**Mechanism verdict:** no-edge \u2014 mechanism works in sample but fails OOS\n**Per-trade edge:** strong in training (196.7% PnL vs BnH ~66%) driven entirely by sitting out 2022 bear; validation -48.11%\n**Why it failed pass criteria:** training edge = 1 macro regime call (avoid 2022 bear). Validation 2025 had BTC churning near SMA200 with 8 transitions, each whipsaw compounding losses. The 3% buffer was insufficient to prevent the cascade.\n**Regime behaviour:** bear-2022: correctly out (BTC 0.28% below SMA200 on Jan 1, 2022); recovery-2023: entered March 2023 at $28k; bull-2024: mostly in; validation-2025: 8 whipsaw transitions \u2192 accumulated -48%\n**Generalizable lesson:** Simple MA regime filters are highly sensitive to the market condition they encounter \u2014 they work perfectly when tested in a period containing exactly one clean bear market + recovery, but fail badly when price chops near the MA threshold. Statistical evidence from 13 transitions (essentially 1 macro call) is insufficient.\n**Next directions:** 1. More robust regime detection (hidden Markov, multi-MA agreement, volatility-regime); 2. Asymmetric entry/exit (much larger exit buffer than entry buffer to prevent re-entry during chop); 3. Abandon pure MA regime filters as primary strategy",
+    "experiment_id": "exp-1773400914840-0927",
+    "id": "fnd-1773401187290-7837",
+    "tags": [
+      "overfit",
+      "invalid-hypothesis",
+      "drawdown-issue"
+    ],
+    "title": "DailyMaRegime: one-cycle macro overfit \u2014 devastating validation whipsaws"
+  },
+  {
+    "added_at": "2026-03-13T12:34:25.549510Z",
+    "body": "**Mechanism verdict:** no-edge \u2014 asymmetric buffer fails to address root cause\n**Per-trade edge:** Training 145.9% (down from 196.7% with 3% buffer) | Validation -49.29% (worse than original -48.11%)\n**Why it failed pass criteria:** Larger exit buffer (6%) exits the bear later at a lower price, degrading training performance. Validation still whipsaws because price in 2025 still crossed 6% below SMA200 at some point \u2014 the threshold-bounce problem is structural, not buffer-size dependent.\n**Regime behaviour:** bear-2022: exits later (worse price) \u2192 lower training PnL; validation-2025: still experiencing regime oscillations despite larger buffer\n**Generalizable lesson:** Increasing an exit buffer shifts WHERE whipsaws occur but doesn't eliminate the sensitivity of threshold-based regime filters to price churning. The MA regime approach is fundamentally fragile regardless of buffer size.\n**Next directions:** 1. Abandon MA-based single-asset regime filters entirely; 2. Focus on MaGatedRotation (PASSED) \u2014 per-asset approach avoids global threshold fragility",
+    "experiment_id": "exp-1773404954757-9300",
+    "id": "fnd-1773405265545-0225",
+    "tags": [
+      "overfit",
+      "drawdown-issue",
+      "invalid-hypothesis"
+    ],
+    "title": "DailyMaRegimeAsymmetric: larger exit buffer made training worse and didn't fix validation"
+  },
+  {
+    "added_at": "2026-03-13T13:43:46.746506Z",
+    "body": "**Mechanism verdict:** no-edge \u2014 8w lookback is worse than 4w for validation\n**Per-trade edge:** Train 166.84% (beats BnH 42.2% \u2713) | Val -22.74% (vs BnH -16.93% \u2717)\n**Why it failed pass criteria:** In choppy 2025, slower 8w signal responds less quickly to trend reversals. When an asset's price starts declining after a bull run, the 8w momentum still shows positive returns from 2+ months ago, keeping the strategy long for 1-2 extra weeks before the MA gate forces exit. Those extra weeks of declining price are additional losses vs the 4w signal which would have de-ranked the asset sooner. Validation went from -12.18% (4w/2w) to -22.74% (-10.56pp degradation).\n**Regime behaviour:** bear-2022: unchanged (MA gate dominates); recovery-2023: likely similar; bull-2024: slight improvement from smoother compounding; validation-2025: significantly worse \u2014 slower signal holds losers too long\n**Generalizable lesson:** In cross-sectional momentum with weekly rebalancing, a momentum lookback much longer than the rebalance interval (8w vs 2w) creates lag at trend reversals. The lookback should be 2-4x the rebalance interval for responsive signal alignment.\n**Next directions:** 1. Try hold_count=3 (top 3 of 6 assets \u2014 more diversification reduces single-asset risk); 2. Dynamic rebalance cadence (weekly when trending via ADX, bi-weekly when choppy)",
+    "experiment_id": "exp-1773409078246-0728",
+    "id": "fnd-1773409426743-7176",
+    "tags": [
+      "overfit",
+      "invalid-hypothesis",
+      "momentum"
+    ],
+    "title": "MaGatedRotationMomentum8w: longer lookback hurts choppy validation \u2014 signal too slow"
+  },
+  {
+    "added_at": "2026-03-13T13:44:00.739931Z",
+    "body": "**Mechanism verdict:** no-edge \u2014 vol targeting hurts momentum PnL% in choppy markets despite theoretical Sharpe benefit\n**Per-trade edge:** Train 326.16% (beats BnH 42.2% \u2713 but lower than base 372.69%) | Val -20.28% (vs BnH -16.93% \u2717)\n**Why it failed pass criteria:** Validation went from -16.89% (fixed sizing) to -20.28% (-3.39pp degradation). Root cause: EWMA vol is reactive (lags crashes ~1-2 weeks). In 2025's volatile market, vol spikes AFTER price drops \u2014 so when the strategy re-enters a recovering asset, vol is still elevated, causing a smaller position. The recovery's upside is captured with less capital. The MA gate already handles full bear-market exits; vol scaling only modulates size at the margin, and that margin works against you in a recovery phase.\n**Regime behaviour:** bear-2022: identical to base (MA gate exits to cash before vol scaling matters); bull-2024: slightly lower returns (smaller avg position); validation-2025: worse \u2014 reduced sizing during volatile recoveries nets less upside\n**Generalizable lesson:** Reactive vol scaling (EWMA) reduces position size AFTER losses and DURING recoveries (when vol is still elevated). For momentum strategies with a trend-exit gate, this systematically underweights re-entries in volatile bull phases, hurting PnL% without proportional drawdown reduction. Vol scaling may benefit absolute-return strategies but not gate-protected rotation strategies.\n**Next directions:** 1. If vol is to be used, try predictive vol signal rather than reactive EWMA; 2. Accept that MaGatedRotation(Extended) with fixed sizing may be the right baseline; 3. Focus investigation on hold_count variation",
+    "experiment_id": "exp-1773409094711-4642",
+    "id": "fnd-1773409440736-2089",
+    "tags": [
+      "invalid-hypothesis",
+      "drawdown-issue",
+      "regime-filter"
+    ],
+    "title": "MaGatedRotationVolScaled: reactive vol sizing hurts validation \u2014 captures less recovery"
+  },
+  {
+    "added_at": "2026-03-13T20:39:18.372474Z",
+    "body": "**Mechanism verdict:** no-edge \u2014 holding 3rd-ranked asset dilutes signal without reducing correlated drawdown\n**Per-trade edge:** Train 410.95% (beats BnH 42.2% \u2713) | Val -25.74% (vs BnH ~-16.93% \u2717)\n**Why it failed pass criteria:** Validation -25.74% vs -12.18% (MaGatedRotationExtended). In choppy 2025, the 3rd-ranked momentum asset is weaker and adds drag \u2014 it has lower momentum than top-2 but same correlated downside. Training paradox: 3 positions in bull 2023-2024 means more capital always deployed \u2192 410.95% (vs 155.05% for 2 positions). But same higher exposure in 2025's bear/flat \u2192 worse PnL. Capital: 333\u00d73=0k same as 000\u00d72=0k, but 3 positions exposes more of it to the marginal 3rd asset.\n**Regime behaviour:** bear-2022: same as base (SMA gate forces cash); bull-2024: training jump 155\u2192410% from always having 3 positions deployed; validation-2025: extra position adds negative contribution\n**Generalizable lesson:** For 6 highly correlated crypto assets, concentrating in the top-2 momentum ranked assets is optimal. Adding a 3rd position does not provide real diversification benefit because all 6 assets are correlated in downtrends \u2014 it only adds exposure to the weakest qualifying signal.\n**Next directions:** 1. Accept hold_count=2 as optimal for this 6-asset correlated universe; 2. Focus on signal quality improvements (Sharpe-normalized ranking) rather than position count",
+    "experiment_id": "exp-1773432696261-1414",
+    "id": "fnd-1773434358366-6258",
+    "tags": [
+      "overfit",
+      "invalid-hypothesis",
+      "cross-sectional"
+    ],
+    "title": "MaGatedRotationHoldCount3: more positions hurt validation \u2014 correlated crypto dilutes signal"
+  },
+  {
+    "added_at": "2026-03-14T05:37:37.230299Z",
+    "body": "**Mechanism verdict:** no-edge \u2014 shortening exit gate from 20w to 15w while keeping 13w entry made MaxDD worse, not better\n**Per-trade edge:** Train 199.58% PnL | MaxDD 107.55% (worse than SharpeRankAsymmetricGate's 94.31%) | Val 26.59% (beats BnH -16.93% \u2713) but Val MaxDD 38.49%\n**Why it failed pass criteria:** Training Sharpe -0.20 vs BnH 0.26 AND training MaxDD 107.55% (threshold 40%) \u2014 both secondary criteria fail on training. Paradox: reducing exit gate (20w\u219215w) increased MaxDD. Root cause: (1) `needed` decreases from 25 to 20 prior weeks, starting trading 5 weeks earlier in the 2022 bear \u2192 catches more of the crash; (2) the narrower spread between entry gate (13w) and exit gate (15w) creates more whipsaw cycles \u2014 asset exits below 15w SMA then re-enters at 13w SMA faster, accumulating losses in volatile drawdowns\n**Regime behaviour:** bear-2022: earlier trading start catches more of crash than 20w-exit variant; recovery-2023: faster churn from narrow 13w-15w spread adds noise; bull-2024: similar to original asymmetric gate; validation-2025: actually better MaxDD (38.49%) because 2025 has fewer deep bears\n**Generalizable lesson:** Shortening an exit gate while keeping the same entry gate in an asymmetric design reduces the gate spread, creating more whipsaw cycles. The MaxDD in SharpeRankAsymmetricGate (94.31%) is NOT reducible by shortening the exit gate \u2014 it requires a fundamentally different drawdown control mechanism.\n**Next directions:** 1. Accept SharpeRankAsymmetricGate (13w/20w) as the optimal gate design; 2. Target MaxDD via a portfolio-level equity stop (halt trading if portfolio equity < 40% of peak) rather than gate parameter tuning; 3. Investigate whether MaxDD occurs in specific market regime (2022 bear timing)",
+    "experiment_id": "exp-1773466369492-3992",
+    "id": "fnd-1773466657224-0098",
+    "tags": [
+      "overfit",
+      "drawdown-issue",
+      "regime-filter",
+      "signal-quality"
+    ],
+    "title": "SharpeRankAsymmetricGate15wExit: shorter exit gate paradoxically worsens MaxDD"
+  },
+  {
+    "added_at": "2026-03-14T07:39:30.485523Z",
+    "body": "**Mechanism verdict:** no-edge \u2014 continuous strength discriminator worse than binary count\n**Per-trade edge:** Train 148.98% (beats BnH 42.2% \u2713) | Val -32.05% (vs BnH -16.93% \u2717) \u2014 significantly worse than binary 4/6 variant (Val +13.34%)\n**Why it failed pass criteria:** The alignment strength sum crosses 0.15 (moderate bull threshold) very frequently in 2025's choppy market. When 6 assets each have marginal positive 4w returns (+2-5% each), the total strength \u2248 0.12-0.30 \u2014 straddling the moderate threshold. This triggered 2w rebalancing in most periods, more frequently than the 3w cadence that works best. The stronger threshold (0.50 = avg asset up ~8.3% over 4w) was rarely crossed in 2025, providing no additional discrimination. Net: the 3-tier cadence defaulted to a de-facto 2w cadence rather than fixed 3w \u2014 and 2w underperforms 3w in choppy markets per established principles.\n**Regime behaviour:** bear-2022: SMA gate exits regardless; bull-2024: strength signal correctly triggers 1w in strong trends (training slightly better); validation-2025: chronic marginal-alignment readings (sum 0.15-0.50) cause 2w rebalancing \u2192 more churn than fixed 3w \u2192 -18.39pp regression vs binary 4/6 result\n**Generalizable lesson:** In a 6-asset correlated crypto universe, the sum of 4w returns as an alignment discriminator faces the same binary-correlation problem as the count: either all assets are strongly trending (high sum, easy to detect) or mixed/choppy (low sum, also clear) \u2014 marginal sums in the 0.15-0.50 range reflect the same noisy correlated oscillation that makes count-threshold ineffective. Continuous metrics don't add discrimination when the underlying signal is quasi-binary.\n**Next directions:** 1. Accept that MomentumAlignedCadence investigation is exhausted \u2014 adaptive cadence cannot beat fixed 3w for this universe; 2. Freeze investigation; 3. SharpeRankAsymmetricGate (Val +34.99%, MaxDD 94.31%) and SharpeRank3w (Val +33.81%, MaxDD 26.1%) remain the best results; 4. MaxDD reduction requires non-gate non-sizing mechanism",
+    "experiment_id": "exp-1773472531172-0050",
+    "id": "fnd-1773473970481-8721",
+    "tags": [
+      "overfit",
+      "invalid-hypothesis",
+      "cross-sectional",
+      "momentum",
+      "rebalance-frequency"
+    ],
+    "title": "MomentumAlignedCadenceStrength: FAIL \u2014 sum-based alignment strength crosses thresholds too frequently in choppy markets"
+  },
+  {
+    "added_at": "2026-03-14T09:16:24.293639Z",
+    "body": "**Mechanism verdict:** no-edge for cadence without quality filter\n**Per-trade edge:** train 341.33% | val -22.76% (worse than BnH -16.93%)\n**Why it failed pass criteria:** 3w rebalance on raw momentum holds low-quality signals for longer. The 2w\u21923w improvement in SharpeNormalized is quality\u00d7time interaction \u2014 quality filtering makes longer holds profitable because you're holding persistent trends. Raw momentum without quality filtering at 3w holds noisy signals longer, accumulating more losses per position in choppy 2025 validation.\n**Regime behaviour:** bear-2022: SMA gate blocks, similar to other variants; recovery-2023: strong capture (train 341%); bull-2024: strong; validation-2025: severely underperforms (holds declining assets for 3w each)\n**Generalizable lesson:** the quality\u00d7time interaction (Sharpe normalization \u00d7 longer cadence) is an emergent property of both components together. Cadence extension ALONE (without quality filtering) worsens val by holding noise longer. The 3w cadence improvement requires the quality signal to be load-bearing.\n**Next directions:** MaGatedRotation investigation is exhausted \u2014 raw momentum rotation consistently underperforms SharpeNormalized. All remaining improvements require adding quality filtering, which moves into the SharpeNormalized investigation space.",
+    "experiment_id": "exp-1773479519200-1156",
+    "id": "fnd-1773479784286-3811",
+    "tags": [
+      "invalid-hypothesis",
+      "rebalance-frequency",
+      "signal-quality"
+    ],
+    "title": "MaGatedRotation3w: FAIL val -22.76% \u2014 cadence improvement is NOT independent of signal quality"
+  }
+]

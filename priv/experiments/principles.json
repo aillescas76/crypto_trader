@@ -90,5 +90,318 @@
       "regime-filter",
       "reactive"
     ]
+  },
+  {
+    "added_at": "2026-03-13T20:39:26.397500Z",
+    "evidence": [
+      "exp-1773432696261-1414"
+    ],
+    "id": "prn-1773434366387-2308",
+    "principle": "In cross-sectional momentum with a highly correlated asset universe (e.g. 6 major crypto pairs), concentrating in fewer top-ranked assets (hold_count=2 of 6) is better than holding more (hold_count=3). Crypto assets have near-unity correlation during drawdowns, so the 3rd-ranked asset adds exposure to the weakest qualifying signal without real diversification benefit. More positions = more capital at risk during correlated declines.",
+    "tags": [
+      "cross-sectional",
+      "momentum",
+      "correlation",
+      "hold-count"
+    ]
+  },
+  {
+    "added_at": "2026-03-13T21:01:23.361083Z",
+    "evidence": [
+      "exp-1773435438502-3978"
+    ],
+    "id": "prn-1773435683350-9030",
+    "principle": "Vol-normalizing the RANKING signal (not position sizing) in cross-sectional crypto momentum is beneficial. Ranking by 4w_return / max(stdev_4w_weekly_returns, 0.02) instead of raw 4w_return selects assets with more persistent, less noisy trends. In crypto, high-vol momentum is often ephemeral; low-vol momentum is more persistent. This is categorically distinct from vol-based position sizing (which hurts — Principle 6): it changes WHICH asset to hold, not HOW MUCH.",
+    "tags": [
+      "signal-quality",
+      "momentum",
+      "vol-normalization",
+      "cross-sectional"
+    ]
+  },
+  {
+    "added_at": "2026-03-13T22:08:48.260061Z",
+    "evidence": [
+      "exp-1773439328859-7126"
+    ],
+    "id": "prn-1773439728249-9342",
+    "principle": "Quality-filtered momentum signals (Sharpe-normalized ranking) benefit non-additively from longer holding periods. 2w rebalance + Sharpe ranking produced +42.75pp validation improvement vs additive expectation of +16.3pp from each improvement alone. Quality × time compounds multiplicatively: the signal needs holding time to resolve, and noise interruption (1w rebalance) partially cancels the quality filter's benefit.",
+    "tags": [
+      "signal-quality",
+      "rebalance-frequency",
+      "momentum",
+      "cross-sectional"
+    ]
+  },
+  {
+    "added_at": "2026-03-13T23:23:46.383499Z",
+    "evidence": [
+      "exp-1773443748675-9733"
+    ],
+    "id": "prn-1773444226375-9438",
+    "principle": "The quality×time interaction for Sharpe-normalized cross-sectional momentum in crypto has not plateaued at 3w rebalance. Each additional week of holding allows quality signals to develop without noise interruption, improving validation margins non-additively. Plateau has not been found yet — 4w should be tested.",
+    "tags": [
+      "signal-quality",
+      "rebalance-frequency",
+      "momentum",
+      "cross-sectional"
+    ]
+  },
+  {
+    "added_at": "2026-03-13T23:23:47.670813Z",
+    "evidence": [
+      "exp-1773443739647-1005"
+    ],
+    "id": "prn-1773444227667-8887",
+    "principle": "Shorter SMA gates (13w vs 20w) trade false-positive bear entries for faster recovery captures. In markets with clean trends and deep bears, 20w is more precise. In markets with sharp V-recoveries, 13w captures more upside. The tradeoff depends on whether bear rallies are numerous relative to the depth/clarity of the macro downtrend.",
+    "tags": [
+      "regime-filter",
+      "cross-sectional",
+      "robustness"
+    ]
+  },
+  {
+    "added_at": "2026-03-13T23:23:48.953787Z",
+    "evidence": [
+      "exp-1773443759168-8238"
+    ],
+    "id": "prn-1773444228948-4857",
+    "principle": "Vol-ratio adaptive rebalancing (short_vol/long_vol threshold) correctly identifies macro calm vs elevated regimes (training compounding improves 2.5x over fixed 2w) but suffers from false-calm readings in validation. The mechanism is sound — the calibration (threshold and lookback windows) must be tuned before it can beat a well-chosen fixed cadence.",
+    "tags": [
+      "vol-regime",
+      "rebalance-frequency",
+      "signal-quality"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T00:53:30.683952Z",
+    "evidence": [
+      "exp-1773449137695-0546"
+    ],
+    "id": "prn-1773449610680-8919",
+    "principle": "The quality×time interaction for Sharpe-normalized cross-sectional momentum plateaus at 3w rebalance. Beyond 3w, delayed exits from deteriorating positions outweigh the churn-reduction benefit. The optimal cadence is 3w for this 6-asset crypto universe with weekly-scale momentum signals.",
+    "tags": [
+      "momentum",
+      "rebalance-frequency",
+      "signal-quality",
+      "cross-sectional"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T00:53:31.989452Z",
+    "evidence": [
+      "exp-1773449145676-5410"
+    ],
+    "id": "prn-1773449611985-1384",
+    "principle": "Short/long vol ratio cannot reliably discriminate calm-trending from calm-ranging market conditions. Both produce sustained low vol; only directional signals (ADX, momentum alignment) can distinguish them. Vol ratio adaptive cadence is structurally limited for this use case.",
+    "tags": [
+      "vol-regime",
+      "rebalance-frequency",
+      "signal-quality"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T02:44:22.264837Z",
+    "evidence": [],
+    "id": "prn-1773456262256-6013",
+    "principle": "The Daniel-Moskowitz bear-state overlay (trailing return < 0 AND recent vol > 1.5× baseline vol) is structurally inoperative in crypto. Crypto has persistently elevated baseline volatility, so the short/long vol ratio rarely exceeds 1.5×. In equity markets, vol spikes are sharp relative to a low baseline; in crypto, the baseline is already elevated. Additionally, the per-asset 20w SMA gate provides equivalent bear protection by forcing full cash exit when all assets are below their MA. Redundant overlays add complexity without defensive value.",
+    "tags": [
+      "overfit",
+      "regime-filter",
+      "bear-market",
+      "crypto-specific"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T02:49:13.281474Z",
+    "evidence": [
+      "exp-1773456275372-0819"
+    ],
+    "id": "prn-1773456553278-3850",
+    "principle": "A shorter SMA gate (13w vs 20w) combined with Sharpe-normalized quality ranking reduces but does not eliminate false re-entry noise in choppy OOS validation periods. When the validation period has frequent low-amplitude SMA crossings, a wider gate (20w) provides cleaner bear detection. Quality filters (SharpeRank) optimize within a given gate period — they do not compensate for a gate period that is too reactive to short-term price oscillations.",
+    "tags": [
+      "regime-filter",
+      "signal-quality",
+      "cross-sectional",
+      "momentum"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T02:49:14.569991Z",
+    "evidence": [
+      "exp-1773456290151-7168"
+    ],
+    "id": "prn-1773456554565-6676",
+    "principle": "In a 6-asset highly-correlated crypto universe, a momentum-alignment threshold of 4/6 (67%) is too permissive for cadence discrimination — in sideways/ranging markets, 4 of 6 assets can have marginally positive 4w returns simultaneously. Direction-based cadence discriminators require a higher threshold (83%, 5/6) to distinguish genuine bull consensus from noisy correlated oscillation.",
+    "tags": [
+      "rebalance-frequency",
+      "cross-sectional",
+      "momentum",
+      "signal-quality"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T04:07:30.324354Z",
+    "evidence": [
+      "exp-1773460777409-7180"
+    ],
+    "id": "prn-1773461250319-6189",
+    "principle": "In a highly correlated multi-asset crypto universe, cross-asset momentum alignment is quasi-binary: either most assets are trending together (bull) or fragmented (choppy). Threshold tuning between 4/6 and 5/6 is ineffective because asset momentum rarely splits at the boundary — changing from 67% to 83% threshold produces identical cadence decisions.",
+    "tags": [
+      "cross-sectional",
+      "momentum",
+      "correlation",
+      "signal-quality"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T04:07:31.630447Z",
+    "evidence": [
+      "exp-1773460784275-3834"
+    ],
+    "id": "prn-1773461251627-8107",
+    "principle": "Asymmetric SMA gates (faster entry, slower exit) improve total PnL% and Sharpe by capturing more recovery upside, but increase MaxDD because the strategy holds through more of a subsequent decline before the conservative exit threshold fires. Net effect: better risk-adjusted returns but worse worst-case drawdown vs symmetric conservative gates.",
+    "tags": [
+      "regime-filter",
+      "cross-sectional",
+      "momentum",
+      "drawdown-issue"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T05:38:02.100295Z",
+    "evidence": [
+      "exp-1773466369492-3992"
+    ],
+    "id": "prn-1773466682094-3706",
+    "principle": "Narrowing the entry-exit spread in an asymmetric gate (e.g., 13w entry / 15w exit vs 13w/20w) increases MaxDD rather than reducing it. The wider spread (13w/20w) keeps assets in through volatility that would trigger a narrow gate's exit, then forces whipsaw cycles — exit at 15w, re-enter at 13w, exit again. More transitions = more realized losses. Asymmetric gate designs require a substantial spread (7w+ minimum) to prevent the entry-exit interaction from amplifying drawdowns.",
+    "tags": [
+      "regime-filter",
+      "drawdown-issue",
+      "asymmetric-gate"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T05:38:08.796655Z",
+    "evidence": [
+      "exp-1773466380618-8037"
+    ],
+    "id": "prn-1773466688791-9061",
+    "principle": "An alignment-cadence discriminator (>=4/6 assets positive 4w momentum → 1w rebalance, else 3w) combined with an asymmetric gate (13w entry / 20w exit) reduces MaxDD dramatically (94.31% → 25.95%) by preventing over-holding in bearish periods. However, the two mechanisms are in tension: the asymmetric gate's validation gain comes from holding through volatile recoveries (exit only at 20w), while the alignment cadence forces early rebalances during those same volatile periods. Combining them cures MaxDD at the cost of 21pp validation margin.",
+    "tags": [
+      "cross-sectional",
+      "momentum",
+      "rebalance-frequency",
+      "regime-filter",
+      "drawdown-issue"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T07:39:40.153512Z",
+    "evidence": [
+      "exp-1773472520884-1038"
+    ],
+    "id": "prn-1773473980150-3489",
+    "principle": "Position sizing reductions in recovery-capturing strategies (e.g. half-sizing below 50w SMA) proportionally reduce both downside risk AND the primary upside that the recovery mechanism provides. If the core edge of a strategy IS capturing early recovery entries, half-sizing those entries is self-defeating: it reduces the mechanism's intended benefit as much as it reduces the risk.",
+    "tags": [
+      "regime-filter",
+      "sizing",
+      "cross-sectional",
+      "momentum"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T07:39:41.459613Z",
+    "evidence": [
+      "exp-1773472531172-0050"
+    ],
+    "id": "prn-1773473981453-5904",
+    "principle": "In a 6-asset correlated crypto universe, both alignment COUNT (binary threshold) and alignment STRENGTH (continuous sum) fail to discriminate well as cadence discriminators. The underlying signal is quasi-binary: either all assets are strongly trending together or fragmented. Marginal alignment metrics (strength 0.15-0.50) reflect the same noisy correlated oscillation as borderline counts — no continuous transformation of the alignment signal overcomes this structural correlation property.",
+    "tags": [
+      "rebalance-frequency",
+      "cross-sectional",
+      "momentum",
+      "correlation"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T07:40:45.592476Z",
+    "evidence": [
+      "exp-1773472520884-1038"
+    ],
+    "id": "prn-1773474045587-3554",
+    "principle": "The 50w SMA half-sizing filter creates a direct mechanical MaxDD-vs-return tradeoff in recovery-capturing strategies: training MaxDD 94.31% → 39.38% (passes on MaxDD threshold), but validation return -15pp (34.99% → 19.9%). The tradeoff ratio is roughly 1:1 — halving position size on early-recovery entries halves both the downside AND the upside from those entries. This is a useful MaxDD control only when MaxDD compliance is a hard constraint, not a free improvement.",
+    "tags": [
+      "regime-filter",
+      "sizing",
+      "cross-sectional",
+      "momentum",
+      "drawdown-issue"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T09:11:26.560125Z",
+    "evidence": [
+      "none"
+    ],
+    "id": "prn-1773479486556-2055",
+    "principle": "Absolute momentum filters (require own N-week return > 0%) are structurally redundant with per-asset SMA gates in the same strategy. In deep bear markets, the SMA gate already blocks all assets; absolute momentum adds zero incremental protection. In shallow corrections and V-shape recoveries, assets can have slightly negative 4-week returns (-5% to 0%) while being on the verge of sharp recoveries. The threshold sits on a noise boundary where returns have no predictive power for the next rebalance period. The Jan 2024 crypto rally (+24% on BTC/ETH) is archetypal: absolute momentum would have blocked entry precisely at the bottom of a transient dip. The 20w SMA gate is the correct temporal scale for this mechanism; sub-SMA-period momentum overlays are harmful in the same way the Daniel-Moskowitz overlay was.",
+    "tags": [
+      "regime-filter",
+      "absolute-momentum",
+      "redundant",
+      "recovery-lag"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T09:16:36.340022Z",
+    "evidence": [
+      "exp-1773479508086-7880"
+    ],
+    "id": "prn-1773479796329-3068",
+    "principle": "Quality threshold gates on entry (e.g., Sharpe >= 0.5 to enter) interact destructively with asymmetric SMA gates. The asymmetric gate's value is intentional risk-taking on volatile early-recovery entries (enter at 13w, exit at 20w). A quality threshold that blocks low-Sharpe early entries removes the mechanism's purpose without curing the MaxDD (which comes from HOLDING through the 20w exit, not from entry scoring). The result is a strategy that resembles a conservative symmetric gate but with a wider exit lag — strictly worse.",
+    "tags": [
+      "asymmetric-gate",
+      "signal-quality",
+      "regime-filter"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T09:16:37.657516Z",
+    "evidence": [
+      "exp-1773479519200-1156"
+    ],
+    "id": "prn-1773479797652-4482",
+    "principle": "The quality×time interaction in crypto momentum (Sharpe-normalized ranking × 3w rebalance cadence) is synergistic and not decomposable. Cadence extension alone (3w raw momentum) WORSENS validation by holding noise longer: 3w raw val = -22.76%, 3w Sharpe val = +33.81%. Neither component provides meaningful improvement independently; their combination creates a +40pp uplift vs both baselines. When designing strategy improvements, test interaction effects before attributing gains to individual levers.",
+    "tags": [
+      "signal-quality",
+      "rebalance-frequency",
+      "momentum",
+      "cross-sectional"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T10:00:00.000000Z",
+    "evidence": ["exp-1773480539783-1549"],
+    "id": "prn-1773481200000-0001",
+    "principle": "MaxDD in asymmetric-gate momentum strategies comes from HOLDING duration (exit at 20w), not from entry timing. Any fix that operates on entries (equity stop, half-sizing, quality threshold) addresses the wrong mechanism: it blocks recovery entries that generate returns while failing to reduce the hold-through-decline losses that cause MaxDD. The only valid MaxDD fix for this architecture must shorten the exit hold — such as a trailing stop on existing positions or a maximum hold-period override in sharply declining markets.",
+    "tags": [
+      "drawdown-issue",
+      "asymmetric-gate",
+      "regime-filter",
+      "mechanism-diagnosis"
+    ]
+  },
+  {
+    "added_at": "2026-03-14T10:00:00.000000Z",
+    "evidence": ["exp-1773480564951-8365"],
+    "id": "prn-1773481200000-0002",
+    "principle": "Weekly ADX > 20 is structurally too permissive as a regime discriminator for crypto rotation strategies. Crypto assets exhibit persistently high weekly price ranges — even in sideways/ranging markets, the directional movement within each week is sufficient to keep ADX above 20. This is categorically different from equity daily ADX, where truly ranging markets produce ADX below 20 consistently. For weekly crypto cadence discrimination, either a much higher ADX threshold (35+) or a completely different directional measure is required.",
+    "tags": [
+      "rebalance-frequency",
+      "vol-regime",
+      "crypto-specific",
+      "signal-quality"
+    ]
   }
 ]
