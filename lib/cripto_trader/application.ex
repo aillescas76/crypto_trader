@@ -27,7 +27,8 @@ defmodule CriptoTrader.Application do
         {CriptoTrader.Experiments.Engine,
          poll_interval_ms: 30_000, pubsub_server: CriptoTrader.PubSub},
         CriptoTrader.LiveSim.Manager,
-        CriptoTrader.LiveSim.BinanceStream
+        CriptoTrader.LiveSim.BinanceStream,
+        CriptoTrader.ExperimentLoop.Runner
       ]
     end
   end

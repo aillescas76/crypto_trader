@@ -29,6 +29,14 @@ config :cripto_trader, CriptoTraderWeb.Endpoint,
 
 config :phoenix, :json_library, Jason
 
+config :cripto_trader, CriptoTrader.ExperimentLoop.Runner,
+  auto_start: false,
+  sleep_ms: 300_000,
+  improve_every: 5,
+  timeout_ms: 5_400_000,
+  iterations: 0,
+  budget_usd: nil
+
 config :cripto_trader, ecto_repos: [CriptoTrader.CandleDB.Repo]
 
 config :cripto_trader, CriptoTrader.CandleDB.Repo,

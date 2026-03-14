@@ -11,7 +11,8 @@ defmodule Mix.Tasks.Binance.Simulate do
     BuyAndHold,
     IntradayMomentum,
     LateralRange,
-    RegimeDetector
+    RegimeDetector,
+    SharpeRankRotation
   }
 
   @shortdoc "Run a Binance Spot simulation from historical candles"
@@ -371,9 +372,12 @@ defmodule Mix.Tasks.Binance.Simulate do
       "altcoin_cycle" ->
         :altcoin_cycle
 
+      "sharpe_rank_rotation" ->
+        :sharpe_rank_rotation
+
       _ ->
         Mix.raise(
-          "Invalid --strategy. Accepted values: alternating, intraday_momentum, bb_rsi_reversion, lateral_range, regime_detector, buy_and_hold, altcoin_cycle"
+          "Invalid --strategy. Accepted values: alternating, intraday_momentum, bb_rsi_reversion, lateral_range, regime_detector, buy_and_hold, altcoin_cycle, sharpe_rank_rotation"
         )
     end
   end
@@ -381,7 +385,7 @@ defmodule Mix.Tasks.Binance.Simulate do
   defp parse_strategy!(_),
     do:
       Mix.raise(
-        "Invalid --strategy. Accepted values: alternating, intraday_momentum, bb_rsi_reversion, lateral_range, regime_detector, buy_and_hold, altcoin_cycle"
+        "Invalid --strategy. Accepted values: alternating, intraday_momentum, bb_rsi_reversion, lateral_range, regime_detector, buy_and_hold, altcoin_cycle, sharpe_rank_rotation"
       )
 
   defp strategy_config(:alternating, symbols, %{quantity: quantity}) do
@@ -421,6 +425,11 @@ defmodule Mix.Tasks.Binance.Simulate do
        # Use 1h candles for regime detection regardless of signal interval
        adx_timeframe_ms: 3_600_000
      )}
+  end
+
+  defp strategy_config(:sharpe_rank_rotation, symbols, %{quote_per_trade: quote_per_position}) do
+    {&SharpeRankRotation.signal/2,
+     SharpeRankRotation.new_state(symbols, quote_per_position: quote_per_position)}
   end
 
   defp strategy_config(:altcoin_cycle, symbols, %{

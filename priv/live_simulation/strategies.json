@@ -1,0 +1,25 @@
+[
+  {
+    "id": "strat-1773421873277-189",
+    "initial_balance": 1.0e3,
+    "label": "Intraday ADA",
+    "module": "CriptoTrader.Strategy.IntradayMomentum",
+    "params": {},
+    "symbols": [
+      "ADAUSDC",
+      "SOLUSDC"
+    ]
+  },
+  {
+    "id": "strat-1773421934616-5708",
+    "initial_balance": 1.0e3,
+    "label": "Lateral Test",
+    "module": "CriptoTrader.Strategy.LateralRange",
+    "params": {},
+    "symbols": [
+      "BTCUSDC",
+      "SOLUSDC",
+      "ADAUSDC"
+    ]
+  }
+]

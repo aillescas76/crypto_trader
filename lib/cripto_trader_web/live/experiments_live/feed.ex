@@ -3,12 +3,15 @@ defmodule CriptoTraderWeb.ExperimentsLive.Feed do
 
   alias CriptoTrader.Experiments.State
 
+  alias CriptoTrader.ExperimentLoop.Runner, as: LoopRunner
+
   @session_poll_ms 5_000
 
   @impl true
   def mount(_params, _session, socket) do
     if connected?(socket) do
       Phoenix.PubSub.subscribe(CriptoTrader.PubSub, "experiments:updates")
+      Phoenix.PubSub.subscribe(CriptoTrader.PubSub, "experiment_loop:status")
       :timer.send_interval(@session_poll_ms, self(), :refresh_session)
       :timer.send_interval(@session_poll_ms, self(), :refresh_experiments)
     end
@@ -19,7 +22,14 @@ defmodule CriptoTraderWeb.ExperimentsLive.Feed do
         _ -> []
       end
 
-    {:ok, assign(socket, experiments: experiments, loop_session: State.read_session())}
+    loop_status = LoopRunner.status()
+
+    {:ok,
+     assign(socket,
+       experiments: experiments,
+       loop_session: State.read_session(),
+       loop_status: loop_status
+     )}
   end
 
   @impl true
@@ -40,6 +50,10 @@ defmodule CriptoTraderWeb.ExperimentsLive.Feed do
     {:noreply, assign(socket, experiments: experiments)}
   end
 
+  def handle_info({:loop_status, snap}, socket) do
+    {:noreply, assign(socket, loop_status: snap)}
+  end
+
   def handle_info(:refresh_session, socket) do
     {:noreply, assign(socket, loop_session: State.read_session())}
   end
@@ -55,9 +69,41 @@ defmodule CriptoTraderWeb.ExperimentsLive.Feed do
   end
 
   @impl true
+  def handle_event("loop_start", _params, socket) do
+    LoopRunner.start_loop()
+    {:noreply, assign(socket, loop_status: LoopRunner.status())}
+  end
+
+  def handle_event("loop_stop", _params, socket) do
+    LoopRunner.stop_loop()
+    {:noreply, assign(socket, loop_status: LoopRunner.status())}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <h1>Experiment Feed</h1>
+
+    <%!-- Loop runner controls --%>
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:10px 16px">
+      <span style={"color:#{loop_status_color(@loop_status)}; font-size:0.9em; font-weight:bold"}>
+        <%= loop_status_label(@loop_status) %>
+      </span>
+      <%= if @loop_status.iteration > 0 do %>
+        <span style="color:#8b949e; font-size:0.85em">iteration <%= @loop_status.iteration %></span>
+      <% end %>
+      <div style="margin-left:auto; display:flex; gap:8px">
+        <%= if @loop_status.status in [:idle, :stopped] do %>
+          <button phx-click="loop_start" style="background:#238636; color:#fff; border:none; border-radius:6px; padding:5px 14px; cursor:pointer; font-size:0.85em">
+            ▶ Start loop
+          </button>
+        <% else %>
+          <button phx-click="loop_stop" style="background:#da3633; color:#fff; border:none; border-radius:6px; padding:5px 14px; cursor:pointer; font-size:0.85em">
+            ■ Stop loop
+          </button>
+        <% end %>
+      </div>
+    </div>
 
     <div class={"session-panel session-#{session_status(@loop_session)}"}>
       <div class="session-header">
@@ -92,9 +138,9 @@ defmodule CriptoTraderWeb.ExperimentsLive.Feed do
           <th>Strategy</th>
           <th>Status</th>
           <th>Verdict</th>
-          <th>Train PnL%</th>
-          <th>Val PnL%</th>
-          <th>Train Sharpe</th>
+          <th><span title="Strategy P&L% on the TRAINING period (2021-12 → 2025-01) vs Buy-and-Hold baseline. Must beat BnH to count toward a PASS verdict." style="cursor:help; border-bottom:1px dotted #8b949e">Train PnL%</span></th>
+          <th><span title="Strategy P&L% on the VALIDATION period (2025-01 → 2026-01, unseen data) vs Buy-and-Hold. Both training AND validation must beat BnH for a PASS verdict." style="cursor:help; border-bottom:1px dotted #8b949e">Val PnL%</span></th>
+          <th><span title="Sharpe ratio on the training period: annualised return ÷ volatility. Measures risk-adjusted performance — higher is better. Used as a secondary pass criterion alongside PnL%." style="cursor:help; border-bottom:1px dotted #8b949e">Train Sharpe</span></th>
           <th>Queued</th>
         </tr>
       </thead>
@@ -206,4 +252,16 @@ defmodule CriptoTraderWeb.ExperimentsLive.Feed do
 
   defp short_time(iso) when is_binary(iso) and byte_size(iso) >= 16, do: String.slice(iso, 0, 16)
   defp short_time(_), do: "-"
+
+  # ── Loop runner helpers ────────────────────────────────────────────────────
+
+  defp loop_status_label(%{status: :running}), do: "● RUNNING"
+  defp loop_status_label(%{status: :rate_limited}), do: "⏸ RATE LIMITED"
+  defp loop_status_label(%{status: :stopped}), do: "■ STOPPED"
+  defp loop_status_label(_), do: "○ IDLE"
+
+  defp loop_status_color(%{status: :running}), do: "#3fb950"
+  defp loop_status_color(%{status: :rate_limited}), do: "#e3b341"
+  defp loop_status_color(%{status: :stopped}), do: "#f85149"
+  defp loop_status_color(_), do: "#8b949e"
 end

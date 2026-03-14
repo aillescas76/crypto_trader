@@ -7,6 +7,18 @@ defmodule CriptoTraderWeb.Endpoint do
     websocket: [connect_info: [session: @session_options]]
 
   plug Plug.Static,
+    at: "/assets",
+    from: {:phoenix, "priv/static"},
+    gzip: false,
+    only: ~w(phoenix.min.js)
+
+  plug Plug.Static,
+    at: "/assets",
+    from: {:phoenix_live_view, "priv/static"},
+    gzip: false,
+    only: ~w(phoenix_live_view.min.js)
+
+  plug Plug.Static,
     at: "/",
     from: :cripto_trader,
     gzip: false,

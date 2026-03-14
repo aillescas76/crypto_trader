@@ -21,5 +21,6 @@ defmodule CriptoTraderWeb.Router do
     live "/session", ExperimentsLive.Session
     live "/investigations", ExperimentsLive.Investigations
     live "/live-sim", LiveSimLive
+    live "/market", MarketLive
   end
 end

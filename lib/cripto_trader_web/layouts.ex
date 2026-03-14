@@ -10,6 +10,7 @@ defmodule CriptoTraderWeb.Layouts do
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="csrf-token" content={Phoenix.Controller.get_csrf_token()} />
         <title>Cripto Trader — Experiment Loop</title>
+        <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
         <style>
           * { box-sizing: border-box; }
           body { font-family: monospace; background: #0d1117; color: #c9d1d9; margin: 0; padding: 0; }
@@ -58,10 +59,14 @@ defmodule CriptoTraderWeb.Layouts do
           <a href="/session">Session</a>
           <a href="/investigations">Investigations</a>
           <a href="/live-sim">Live Sim</a>
+          <a href="/market">Market</a>
         </nav>
         <main>
           <%= @inner_content %>
         </main>
+        <script src="/assets/phoenix.min.js"></script>
+        <script src="/assets/phoenix_live_view.min.js"></script>
+        <script src="/assets/app.js"></script>
       </body>
     </html>
     """

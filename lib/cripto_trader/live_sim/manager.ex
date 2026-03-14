@@ -7,8 +7,9 @@ defmodule CriptoTrader.LiveSim.Manager do
   - strategy_state (opaque term owned by the strategy module)
   - last_signals: %{symbol => order_count}
 
-  Strategies are persisted to priv/live_simulation/strategies.json so they
-  survive server restarts (positions/balance reset on restart by design).
+  Full runtime state (balance, positions, fills, strategy_state) is persisted to
+  priv/live_simulation/strategies.json after every candle tick and on add/remove,
+  surviving application restarts. strategy_state is serialized via term_to_binary.
   """
 
   use GenServer
@@ -32,7 +33,7 @@ defmodule CriptoTrader.LiveSim.Manager do
   @impl true
   def init(_) do
     File.mkdir_p!(Path.dirname(@strategies_file))
-    {:ok, %{strategies: load_strategies(), last_prices: %{}}}
+    {:ok, %{strategies: load_strategies(), last_prices: %{}, candles: %{}}}
   end
 
   # ── Calls ───────────────────────────────────────────────────────────────────
@@ -60,12 +61,14 @@ defmodule CriptoTrader.LiveSim.Manager do
       id = gen_id("strat")
       symbols = parse_symbols(spec["symbols"])
       initial_balance = parse_float(spec["initial_balance"] || 1000.0)
-      params = parse_params(spec["params"])
-      entry = build_entry(id, module, spec["module"], spec["label"], symbols, initial_balance, params)
+      raw_params = normalize_params_map(spec["params"])
+      parsed_params = map_to_parsed_params(raw_params)
+      entry = build_entry(id, module, spec["module"], spec["label"], symbols, initial_balance, raw_params, parsed_params)
 
       new_state = %{state | strategies: Map.put(state.strategies, id, entry)}
       persist_strategies(new_state)
       refresh_stream(new_state)
+      broadcast_update(new_state)
       {:reply, {:ok, id}, new_state}
     end
   end
@@ -74,13 +77,14 @@ defmodule CriptoTrader.LiveSim.Manager do
     new_state = %{state | strategies: Map.delete(state.strategies, id)}
     persist_strategies(new_state)
     refresh_stream(new_state)
+    broadcast_update(new_state)
     {:reply, :ok, new_state}
   end
 
   def handle_call({:reset_strategy, id}, _from, state) do
     case Map.fetch(state.strategies, id) do
       {:ok, s} ->
-        params = parse_params(s.saved_params)
+        params = map_to_parsed_params(s.saved_params)
         reset = %{s |
           balance: s.initial_balance,
           strategy_state: apply(s.module, :new_state, [s.symbols, params]),
@@ -90,7 +94,9 @@ defmodule CriptoTrader.LiveSim.Manager do
           realized_pnl: 0.0,
           last_signals: %{}
         }
-        {:reply, :ok, %{state | strategies: Map.put(state.strategies, id, reset)}}
+        new_state = %{state | strategies: Map.put(state.strategies, id, reset)}
+      broadcast_update(new_state)
+      {:reply, :ok, new_state}
 
       :error ->
         {:reply, {:error, :not_found}, state}
@@ -113,12 +119,27 @@ defmodule CriptoTrader.LiveSim.Manager do
         end
       end)
 
+    candle_entry = %{
+      time: div(event.open_time, 1000),
+      open: get_candle_float(event.candle, :open),
+      high: get_candle_float(event.candle, :high),
+      low: get_candle_float(event.candle, :low),
+      close: get_candle_float(event.candle, :close)
+    }
+
+    new_candles =
+      Map.update(state.candles, symbol, [candle_entry], fn existing ->
+        [candle_entry | existing] |> Enum.take(200)
+      end)
+
     new_state = %{state |
       strategies: new_strategies,
-      last_prices: Map.put(state.last_prices, symbol, close)
+      last_prices: Map.put(state.last_prices, symbol, close),
+      candles: new_candles
     }
 
     Phoenix.PubSub.broadcast(CriptoTrader.PubSub, "live_sim:updates", {:update, build_snapshot(new_state)})
+    persist_strategies(new_state)
 
     candle_map =
       Map.merge(event.candle, %{
@@ -272,12 +293,15 @@ defmodule CriptoTrader.LiveSim.Manager do
           unrealized_pnl: unrealized_pnl,
           positions: s.positions,
           pending_orders: s.pending_orders,
-          filled_orders: Enum.take(s.filled_orders, 10),
+          filled_orders: Enum.take(s.filled_orders, 20),
+          trade_count: length(s.filled_orders),
           last_signals: s.last_signals
         }
       end)
 
-    %{strategies: strategies, last_prices: state.last_prices, updated_at: iso_now()}
+    candles = Map.new(state.candles, fn {sym, list} -> {sym, Enum.reverse(list)} end)
+
+    %{strategies: strategies, last_prices: state.last_prices, candles: candles, updated_at: iso_now()}
   end
 
   # ── Persistence ─────────────────────────────────────────────────────────────
@@ -295,8 +319,11 @@ defmodule CriptoTrader.LiveSim.Manager do
                 id = spec["id"] || gen_id("strat")
                 symbols = parse_symbols(spec["symbols"])
                 initial_balance = parse_float(spec["initial_balance"] || 1000.0)
-                params = parse_params(spec["params"])
-                {id, build_entry(id, module, spec["module"], spec["label"], symbols, initial_balance, params)}
+                raw_params = normalize_params_map(spec["params"])
+                parsed_params = map_to_parsed_params(raw_params)
+                base = build_entry(id, module, spec["module"], spec["label"], symbols, initial_balance, raw_params, parsed_params)
+                entry = restore_runtime_state(base, spec, module, symbols, parsed_params)
+                {id, entry}
               else
                 Logger.warning("LiveSim: skipping unknown module '#{spec["module"]}'")
                 nil
@@ -314,6 +341,27 @@ defmodule CriptoTrader.LiveSim.Manager do
     end
   end
 
+  defp restore_runtime_state(base, spec, module, symbols, parsed_params) do
+    with balance when is_number(balance) <- spec["balance"],
+         realized_pnl when is_number(realized_pnl) <- spec["realized_pnl"] do
+      strategy_state =
+        decode_term(spec["strategy_state_b64"]) ||
+          apply(module, :new_state, [symbols, parsed_params])
+
+      %{base |
+        balance: balance,
+        realized_pnl: realized_pnl,
+        positions: json_to_positions(spec["positions"] || %{}),
+        pending_orders: json_to_orders(spec["pending_orders"] || []),
+        filled_orders: json_to_orders(spec["filled_orders"] || []),
+        last_signals: spec["last_signals"] || %{},
+        strategy_state: strategy_state
+      }
+    else
+      _ -> base
+    end
+  end
+
   defp persist_strategies(state) do
     list =
       Enum.map(state.strategies, fn {_id, s} ->
@@ -323,14 +371,21 @@ defmodule CriptoTrader.LiveSim.Manager do
           "label" => s.label,
           "symbols" => s.symbols,
           "initial_balance" => s.initial_balance,
-          "params" => s.saved_params || %{}
+          "params" => s.saved_params,
+          "balance" => s.balance,
+          "realized_pnl" => s.realized_pnl,
+          "positions" => positions_to_json(s.positions),
+          "pending_orders" => orders_to_json(s.pending_orders),
+          "filled_orders" => s.filled_orders |> Enum.take(@max_fills) |> orders_to_json(),
+          "last_signals" => s.last_signals,
+          "strategy_state_b64" => encode_term(s.strategy_state)
         }
       end)
 
     File.write!(@strategies_file, Jason.encode!(list, pretty: true))
   end
 
-  defp build_entry(id, module, module_str, label, symbols, initial_balance, params) do
+  defp build_entry(id, module, module_str, label, symbols, initial_balance, raw_params, parsed_params) do
     %{
       id: id,
       module: module,
@@ -338,15 +393,19 @@ defmodule CriptoTrader.LiveSim.Manager do
       label: label || module_str,
       symbols: symbols,
       initial_balance: initial_balance,
-      saved_params: %{},
+      saved_params: raw_params,
       balance: initial_balance,
-      strategy_state: apply(module, :new_state, [symbols, params]),
+      strategy_state: apply(module, :new_state, [symbols, parsed_params]),
       positions: %{},
       pending_orders: [],
       filled_orders: [],
       realized_pnl: 0.0,
       last_signals: %{}
     }
+  end
+
+  defp broadcast_update(state) do
+    Phoenix.PubSub.broadcast(CriptoTrader.PubSub, "live_sim:updates", {:update, build_snapshot(state)})
   end
 
   defp refresh_stream(state) do
@@ -379,7 +438,20 @@ defmodule CriptoTrader.LiveSim.Manager do
 
   defp parse_symbols(_), do: []
 
-  defp parse_params(params) when is_map(params) do
+  # Accepts a JSON string (from form textarea) or a map (from file), returns a string-keyed map
+  defp normalize_params_map(params) when is_map(params), do: params
+
+  defp normalize_params_map(params) when is_binary(params) do
+    case Jason.decode(params) do
+      {:ok, map} when is_map(map) -> map
+      _ -> %{}
+    end
+  end
+
+  defp normalize_params_map(_), do: %{}
+
+  # Convert a string-keyed map to a keyword list of existing atoms (for new_state/2)
+  defp map_to_parsed_params(params) when is_map(params) do
     Enum.reduce(params, [], fn {k, v}, acc ->
       try do
         [{String.to_existing_atom(k), v} | acc]
@@ -389,7 +461,53 @@ defmodule CriptoTrader.LiveSim.Manager do
     end)
   end
 
-  defp parse_params(_), do: []
+  defp map_to_parsed_params(_), do: []
+
+  # Positions: %{"BTCUSDC" => %{qty: 1.0, entry_price: 50000.0}} → JSON-safe
+  defp positions_to_json(positions) do
+    Map.new(positions, fn {sym, pos} ->
+      {sym, %{"qty" => pos.qty, "entry_price" => pos.entry_price}}
+    end)
+  end
+
+  defp json_to_positions(map) when is_map(map) do
+    Map.new(map, fn {sym, pos} ->
+      {sym, %{qty: parse_float(pos["qty"]), entry_price: parse_float(pos["entry_price"])}}
+    end)
+  end
+
+  defp json_to_positions(_), do: %{}
+
+  # Orders: normalize atom keys to string keys for JSON storage; keep as-is on load
+  defp orders_to_json(orders) do
+    Enum.map(orders, fn order ->
+      Map.new(order, fn {k, v} -> {if(is_atom(k), do: Atom.to_string(k), else: k), v} end)
+    end)
+  end
+
+  defp json_to_orders(list) when is_list(list), do: list
+  defp json_to_orders(_), do: []
+
+  # Serialize/deserialize opaque strategy_state via Erlang binary term
+  defp encode_term(term) do
+    try do
+      term |> :erlang.term_to_binary() |> Base.encode64()
+    rescue
+      _ -> nil
+    end
+  end
+
+  defp decode_term(nil), do: nil
+
+  defp decode_term(b64) when is_binary(b64) do
+    try do
+      b64 |> Base.decode64!() |> :erlang.binary_to_term([:safe])
+    rescue
+      _ -> nil
+    end
+  end
+
+  defp decode_term(_), do: nil
 
   defp parse_float(v) when is_float(v), do: v
   defp parse_float(v) when is_integer(v), do: v * 1.0

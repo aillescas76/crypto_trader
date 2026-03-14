@@ -31,6 +31,17 @@ defmodule CriptoTraderWeb.LiveSimLive do
      %{trail_pct: 0.25, alt_trail_pct: 0.35, quote_per_trade: 1000.0, btc_symbol: "BTCUSDC"}},
     {"BuyAndHold", "CriptoTrader.Strategy.BuyAndHold",
      %{quote_per_trade: 100.0}},
+    {"SharpeRankRotation", "CriptoTrader.Strategy.SharpeRankRotation",
+     %{
+       quote_per_position: 5000.0,
+       hold_count: 2,
+       ma_period_weeks: 20,
+       momentum_lookback: 4,
+       rebalance_weeks: 3,
+       vol_floor: 0.02
+     }},
+    {"[Exp] AsymGate Rotation", "CriptoTrader.Strategy.Experiment.SharpeRankAsymmetricGate20260314",
+     %{quote_per_position: 5000.0}},
     {"[Exp] PostShockReversal", "CriptoTrader.Strategy.Experiment.PostShockReversal20260313",
      %{drop_atr_multiple: 2.0, atr_period: 14, hold_candles: 8, quote_per_trade: 1000.0}},
     {"[Exp] DailyMaRegime", "CriptoTrader.Strategy.Experiment.DailyMaRegime20260313",
@@ -51,6 +62,7 @@ defmodule CriptoTraderWeb.LiveSimLive do
      assign(socket,
        strategies: snap.strategies,
        last_prices: snap.last_prices,
+       candles_by_symbol: Map.get(snap, :candles, %{}),
        form: blank_form(),
        add_error: nil,
        module_registry: @module_registry
@@ -59,7 +71,12 @@ defmodule CriptoTraderWeb.LiveSimLive do
 
   @impl true
   def handle_info({:update, snap}, socket) do
-    {:noreply, assign(socket, strategies: snap.strategies, last_prices: snap.last_prices)}
+    {:noreply,
+     assign(socket,
+       strategies: snap.strategies,
+       last_prices: snap.last_prices,
+       candles_by_symbol: Map.get(snap, :candles, %{})
+     )}
   end
 
   @impl true
@@ -76,19 +93,28 @@ defmodule CriptoTraderWeb.LiveSimLive do
         params
       end
 
-    {:noreply, assign(socket, form: Map.merge(socket.assigns.form, updated_params))}
+    symbols_error = validate_symbols(Map.get(updated_params, "symbols", socket.assigns.form["symbols"]))
+    merged = Map.merge(socket.assigns.form, updated_params) |> Map.put("symbols_error", symbols_error)
+    {:noreply, assign(socket, form: merged)}
   end
 
   def handle_event("add_strategy", %{"strategy" => params}, socket) do
-    case CriptoTrader.LiveSim.Manager.add_strategy(params) do
-      {:ok, _id} ->
-        {:noreply, assign(socket, form: blank_form(), add_error: nil)}
+    case validate_symbols(Map.get(params, "symbols", "")) do
+      nil ->
+        case CriptoTrader.LiveSim.Manager.add_strategy(params) do
+          {:ok, _id} ->
+            {:noreply, assign(socket, form: blank_form(), add_error: nil)}
 
-      {:error, :bad_module} ->
+          {:error, :bad_module} ->
+            {:noreply,
+             assign(socket,
+               add_error: "Unknown module — make sure it's compiled and implements signal/2"
+             )}
+        end
+
+      error ->
         {:noreply,
-         assign(socket,
-           add_error: "Unknown module — make sure it's compiled and implements signal/2"
-         )}
+         assign(socket, form: Map.put(socket.assigns.form, "symbols_error", error))}
     end
   end
 
@@ -130,72 +156,111 @@ defmodule CriptoTraderWeb.LiveSimLive do
     <%= if @strategies == [] do %>
       <p style="color:#8b949e">No strategies yet. Add one below.</p>
     <% else %>
-      <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(520px,1fr)); gap:16px; margin-bottom:32px">
+      <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(600px,1fr)); gap:20px; margin-bottom:32px">
         <%= for strat <- @strategies do %>
-          <div style="background:#161b22; border:1px solid #30363d; border-radius:8px; padding:16px">
+          <% deployed = deployed_pct(strat.balance, strat.initial_balance) %>
+          <div style="background:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px">
 
-            <%!-- Card header --%>
-            <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:12px">
-              <div>
-                <div style="font-weight:bold; color:#f0f6fc; font-size:1em"><%= strat.label %></div>
-                <div style="color:#8b949e; font-size:0.78em; margin-top:2px"><%= strat.module %></div>
-                <div style="color:#8b949e; font-size:0.78em"><%= Enum.join(strat.symbols, ", ") %></div>
-              </div>
-              <div style="display:flex; gap:6px; flex-shrink:0">
-                <button
-                  phx-click="reset_strategy"
-                  phx-value-id={strat.id}
-                  style="background:#21262d; color:#e3b341; border:1px solid #e3b341; border-radius:4px; padding:4px 10px; font-size:0.78em; cursor:pointer"
-                >Reset</button>
-                <button
-                  phx-click="remove_strategy"
-                  phx-value-id={strat.id}
-                  style="background:#21262d; color:#f85149; border:1px solid #f85149; border-radius:4px; padding:4px 10px; font-size:0.78em; cursor:pointer"
-                >Remove</button>
-              </div>
-            </div>
-
-            <%!-- Stats row --%>
-            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px">
-              <div style="background:#0d1117; border-radius:4px; padding:8px 10px">
-                <div style="color:#8b949e; font-size:0.72em; margin-bottom:2px">EQUITY</div>
-                <div style={pnl_style(strat.equity_return_pct)}>
-                  <%= format_price(strat.equity) %> (<%= format_pct(strat.equity_return_pct) %>)
+            <%!-- Header: label + symbols + buttons --%>
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px">
+              <div style="min-width:0">
+                <div style="font-weight:bold; color:#f0f6fc; font-size:1.05em; margin-bottom:2px"><%= strat.label %></div>
+                <div style="color:#8b949e; font-size:0.75em; margin-bottom:6px"><%= strat.module %></div>
+                <div style="display:flex; flex-wrap:wrap; gap:5px">
+                  <%= for sym <- strat.symbols do %>
+                    <% sig = Map.get(strat.last_signals, sym, 0) %>
+                    <% has_pos = Map.has_key?(strat.positions, sym) %>
+                    <% border_color = cond do
+                         has_pos -> "#3fb950"
+                         sig > 0  -> "#388bfd"
+                         true     -> "#30363d"
+                       end %>
+                    <span style={"display:inline-flex; flex-direction:column; align-items:flex-start; background:#21262d; border:1px solid #{border_color}; border-radius:4px; padding:3px 8px; gap:1px"}>
+                      <span style="display:flex; align-items:center; gap:5px">
+                        <span style="color:#f0f6fc; font-weight:bold; font-size:0.85em"><%= base_currency(sym) %></span>
+                        <%= if has_pos do %>
+                          <span style="color:#3fb950; font-size:0.7em">●LONG</span>
+                        <% end %>
+                        <%= if sig > 0 do %>
+                          <span style="color:#388bfd; font-size:0.7em">↑<%= sig %></span>
+                        <% end %>
+                      </span>
+                      <span style="display:flex; align-items:center; gap:6px">
+                        <span style="color:#8b949e; font-size:0.7em"><%= sym %></span>
+                        <%= if Map.has_key?(@last_prices, sym) do %>
+                          <span style="color:#c9d1d9; font-size:0.75em"><%= format_price(Map.get(@last_prices, sym)) %></span>
+                        <% end %>
+                      </span>
+                    </span>
+                  <% end %>
                 </div>
               </div>
-              <div style="background:#0d1117; border-radius:4px; padding:8px 10px">
-                <div style="color:#8b949e; font-size:0.72em; margin-bottom:2px">REALIZED P&L</div>
-                <div style={pnl_style(strat.realized_pnl)}><%= format_pnl(strat.realized_pnl) %></div>
-              </div>
-              <div style="background:#0d1117; border-radius:4px; padding:8px 10px">
-                <div style="color:#8b949e; font-size:0.72em; margin-bottom:2px">UNREALIZED P&L</div>
-                <div style={pnl_style(strat.unrealized_pnl)}><%= format_pnl(strat.unrealized_pnl) %></div>
+              <div style="display:flex; gap:6px; flex-shrink:0; margin-left:12px">
+                <button phx-click="reset_strategy" phx-value-id={strat.id}
+                  style="background:#21262d; color:#e3b341; border:1px solid #e3b341; border-radius:4px; padding:4px 10px; font-size:0.78em; cursor:pointer">Reset</button>
+                <button phx-click="remove_strategy" phx-value-id={strat.id}
+                  style="background:#21262d; color:#f85149; border:1px solid #f85149; border-radius:4px; padding:4px 10px; font-size:0.78em; cursor:pointer">Remove</button>
               </div>
             </div>
-            <div style="color:#8b949e; font-size:0.78em; margin-bottom:12px">
-              Cash: <%= format_price(strat.balance) %> / Initial: <%= format_price(strat.initial_balance) %>
+
+            <%!-- Stats: 4 columns --%>
+            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px">
+              <div style="background:#0d1117; border-radius:4px; padding:8px 10px">
+                <div style="color:#8b949e; font-size:0.7em; margin-bottom:3px">EQUITY</div>
+                <div style={pnl_style(strat.equity_return_pct)} class="stat-val"><%= format_price(strat.equity) %></div>
+                <div style={pnl_style(strat.equity_return_pct)} class="stat-sub"><%= format_pct(strat.equity_return_pct) %></div>
+              </div>
+              <div style="background:#0d1117; border-radius:4px; padding:8px 10px">
+                <div style="color:#8b949e; font-size:0.7em; margin-bottom:3px">REALIZED P&L</div>
+                <div style={pnl_style(strat.realized_pnl)} class="stat-val"><%= format_pnl(strat.realized_pnl) %></div>
+              </div>
+              <div style="background:#0d1117; border-radius:4px; padding:8px 10px">
+                <div style="color:#8b949e; font-size:0.7em; margin-bottom:3px">UNREALIZED P&L</div>
+                <div style={pnl_style(strat.unrealized_pnl)} class="stat-val"><%= format_pnl(strat.unrealized_pnl) %></div>
+              </div>
+              <div style="background:#0d1117; border-radius:4px; padding:8px 10px">
+                <div style="color:#8b949e; font-size:0.7em; margin-bottom:3px">TRADES</div>
+                <div style="color:#c9d1d9; font-size:0.88em; font-weight:bold" class="stat-val"><%= Map.get(strat, :trade_count, length(strat.filled_orders)) %></div>
+              </div>
+            </div>
+
+            <%!-- Cash / deployment row --%>
+            <div style="margin-bottom:12px">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; font-size:0.78em">
+                <span style="color:#8b949e">Cash <span style="color:#c9d1d9"><%= format_price(strat.balance) %></span> / Initial <span style="color:#c9d1d9"><%= format_price(strat.initial_balance) %></span></span>
+                <span style={"color:#{if deployed > 0, do: "#e3b341", else: "#8b949e"}; font-size:0.85em"}><%= Float.round(deployed, 1) %>% deployed</span>
+              </div>
+              <div style="height:3px; background:#21262d; border-radius:2px; overflow:hidden">
+                <div style={"width:#{deployed}%; height:100%; background:#{if deployed > 80, do: "#f85149", else: "#238636"}; transition:width 0.3s"}></div>
+              </div>
             </div>
 
             <%!-- Open positions --%>
-            <%= if map_size(strat.positions) > 0 do %>
-              <div style="margin-bottom:12px">
-                <div style="color:#8b949e; font-size:0.75em; font-weight:bold; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em">Open Positions</div>
+            <div style="margin-bottom:12px">
+              <div style="color:#8b949e; font-size:0.72em; font-weight:bold; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:5px">
+                Positions (<%= map_size(strat.positions) %>)
+              </div>
+              <%= if map_size(strat.positions) == 0 do %>
+                <div style="color:#8b949e; font-size:0.8em; font-style:italic">No open positions</div>
+              <% else %>
                 <%= for {symbol, pos} <- strat.positions do %>
                   <% last_price = Map.get(@last_prices, symbol, pos.entry_price) %>
                   <% unr = (last_price - pos.entry_price) * pos.qty %>
-                  <div style="display:flex; justify-content:space-between; font-size:0.82em; padding:3px 0; border-bottom:1px solid #21262d">
-                    <span style="color:#f0f6fc"><%= symbol %></span>
+                  <% pos_value = last_price * pos.qty %>
+                  <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; font-size:0.8em; padding:4px 0; border-bottom:1px solid #21262d; gap:4px">
+                    <span style="color:#f0f6fc; font-weight:bold"><%= symbol %></span>
                     <span style="color:#8b949e"><%= Float.round(pos.qty * 1.0, 6) %> @ <%= format_price(pos.entry_price) %></span>
+                    <span style="color:#c9d1d9">≈<%= format_price(pos_value) %></span>
                     <span style={pnl_style(unr)}><%= format_pnl(unr) %></span>
                   </div>
                 <% end %>
-              </div>
-            <% end %>
+              <% end %>
+            </div>
 
             <%!-- Pending orders --%>
             <%= if strat.pending_orders != [] do %>
               <div style="margin-bottom:12px">
-                <div style="color:#8b949e; font-size:0.75em; font-weight:bold; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em">
+                <div style="color:#8b949e; font-size:0.72em; font-weight:bold; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:5px">
                   Pending Orders (<%= length(strat.pending_orders) %>)
                 </div>
                 <%= for order <- Enum.take(strat.pending_orders, 5) do %>
@@ -211,21 +276,39 @@ defmodule CriptoTraderWeb.LiveSimLive do
               </div>
             <% end %>
 
-            <%!-- Recent fills --%>
-            <%= if strat.filled_orders != [] do %>
-              <div>
-                <div style="color:#8b949e; font-size:0.75em; font-weight:bold; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em">Recent Fills</div>
-                <%= for fill <- Enum.take(strat.filled_orders, 5) do %>
-                  <div style="font-size:0.78em; font-family:monospace; color:#8b949e; padding:2px 0">
-                    <span style={if Map.get(fill, :side) == "BUY", do: "color:#3fb950", else: "color:#f85149"}>
-                      <%= Map.get(fill, :side, "?") %>
-                    </span>
-                    <%= Map.get(fill, :symbol, "?") %> @ <%= format_price(Map.get(fill, :fill_price, 0)) %>
-                    qty=<%= Float.round(parse_float_display(Map.get(fill, :quantity)), 6) %>
-                  </div>
-                <% end %>
+            <%!-- Fills table --%>
+            <div>
+              <div style="color:#8b949e; font-size:0.72em; font-weight:bold; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:5px">
+                Recent Fills
               </div>
-            <% end %>
+              <%= if strat.filled_orders == [] do %>
+                <div style="color:#8b949e; font-size:0.8em; font-style:italic">No fills yet</div>
+              <% else %>
+                <table style="width:100%; border-collapse:collapse; font-size:0.78em">
+                  <thead>
+                    <tr>
+                      <th style="color:#8b949e; font-weight:normal; text-align:left; padding:2px 6px 4px 0">TIME</th>
+                      <th style="color:#8b949e; font-weight:normal; text-align:left; padding:2px 6px 4px 0">SIDE</th>
+                      <th style="color:#8b949e; font-weight:normal; text-align:left; padding:2px 6px 4px 0">SYMBOL</th>
+                      <th style="color:#8b949e; font-weight:normal; text-align:right; padding:2px 0 4px 0">PRICE</th>
+                      <th style="color:#8b949e; font-weight:normal; text-align:right; padding:2px 0 4px 6px">QTY</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <%= for fill <- Enum.take(strat.filled_orders, 10) do %>
+                      <% is_buy = Map.get(fill, :side) == "BUY" %>
+                      <tr style="border-top:1px solid #21262d">
+                        <td style="color:#8b949e; padding:3px 6px 3px 0; font-family:monospace"><%= short_fill_time(Map.get(fill, :filled_at, "")) %></td>
+                        <td style={"padding:3px 6px 3px 0; font-weight:bold; #{if is_buy, do: "color:#3fb950", else: "color:#f85149"}"}><%= Map.get(fill, :side, "?") %></td>
+                        <td style="color:#c9d1d9; padding:3px 6px 3px 0"><%= Map.get(fill, :symbol, "?") %></td>
+                        <td style="color:#f0f6fc; text-align:right; padding:3px 0 3px 0; font-family:monospace"><%= format_price(Map.get(fill, :fill_price, 0)) %></td>
+                        <td style="color:#8b949e; text-align:right; padding:3px 0 3px 6px; font-family:monospace"><%= Float.round(parse_float_display(Map.get(fill, :quantity)), 4) %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              <% end %>
+            </div>
 
           </div>
         <% end %>
@@ -282,8 +365,13 @@ defmodule CriptoTraderWeb.LiveSimLive do
             name="strategy[symbols]"
             value={@form["symbols"]}
             placeholder="BTCUSDC,ETHUSDC,SOLUSDC"
-            style="width:100%; background:#0d1117; color:#c9d1d9; border:1px solid #30363d; padding:6px 10px; border-radius:4px; font-family:monospace; font-size:0.88em"
+            style={"width:100%; background:#0d1117; color:#c9d1d9; border:1px solid #{if @form["symbols_error"], do: "#f85149", else: "#30363d"}; padding:6px 10px; border-radius:4px; font-family:monospace; font-size:0.88em"}
           />
+          <%= if @form["symbols_error"] do %>
+            <div style="color:#f85149; font-size:0.8em; margin-top:5px; line-height:1.4">
+              ⚠ <%= @form["symbols_error"] %>
+            </div>
+          <% end %>
         </div>
 
         <div style="margin-bottom:16px">
@@ -315,6 +403,7 @@ defmodule CriptoTraderWeb.LiveSimLive do
       "label" => "",
       "module" => "",
       "symbols" => "",
+      "symbols_error" => nil,
       "initial_balance" => "1000",
       "params" => @default_params_json
     }
@@ -331,6 +420,51 @@ defmodule CriptoTraderWeb.LiveSimLive do
         @default_params_json
     end
   end
+
+  # ── Validation ────────────────────────────────────────────────────────────────
+
+  defp validate_symbols(raw) when is_binary(raw) do
+    symbols =
+      raw
+      |> String.split(",")
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+
+    if symbols == [] do
+      "Enter at least one symbol (e.g. BTCUSDC, ETHUSDC)."
+    else
+      bad = Enum.reject(symbols, &Regex.match?(~r/^[A-Z]{2,20}$/, &1))
+
+      if bad == [] do
+        nil
+      else
+        bad_str = Enum.join(bad, ", ")
+        "Invalid: #{bad_str}. Symbols must be uppercase letters only, e.g. BTCUSDC, ETHUSDC, SOLUSDC. No spaces, numbers, or special characters."
+      end
+    end
+  end
+
+  defp validate_symbols(_), do: "Enter at least one symbol (e.g. BTCUSDC, ETHUSDC)."
+
+  # ── Symbol helpers ────────────────────────────────────────────────────────────
+
+  defp base_currency(sym) do
+    Enum.find_value(["USDC", "EUR", "USDT", "BTC", "ETH"], sym, fn quote ->
+      if String.ends_with?(sym, quote), do: String.replace_suffix(sym, quote, ""), else: nil
+    end)
+  end
+
+  # ── Card helpers ──────────────────────────────────────────────────────────────
+
+  defp deployed_pct(balance, initial) when is_number(balance) and is_number(initial) and initial > 0,
+    do: max(0.0, min(100.0, (1.0 - balance / initial) * 100.0))
+
+  defp deployed_pct(_, _), do: 0.0
+
+  defp short_fill_time(iso) when is_binary(iso) and byte_size(iso) >= 16,
+    do: String.slice(iso, 5, 11)
+
+  defp short_fill_time(_), do: "-"
 
   # ── Formatters ────────────────────────────────────────────────────────────────
 
